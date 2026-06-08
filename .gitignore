@@ -1,0 +1,19 @@
+# IDE
+.idea/
+*.iml
+
+# Build / dependencies
+out/
+backend/target/
+frontend/node_modules/
+frontend/dist/
+
+# Local secrets (use application-local.properties.example as template)
+backend/src/main/resources/application-local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
