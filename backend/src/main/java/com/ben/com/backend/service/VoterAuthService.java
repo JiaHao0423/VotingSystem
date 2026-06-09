@@ -6,6 +6,7 @@ import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.security.VoterPrincipal;
 import com.ben.com.backend.util.ShortNameNormalizer;
 import com.ben.com.backend.web.dto.QrAuthRequest;
+import com.ben.com.backend.web.dto.QrPreviewResponse;
 import com.ben.com.backend.web.dto.VerifyAuthRequest;
 import com.ben.com.backend.web.dto.VoterSessionResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -58,11 +59,18 @@ public class VoterAuthService {
 		return establishSession(owner, "身份驗證成功，歡迎進入投票系統");
 	}
 
+	@Transactional(readOnly = true)
+	public QrPreviewResponse previewQrToken(String token) {
+		var owner = ownerRepository.findByQrTokenWithUnit(token)
+				.orElseThrow(() -> new UnauthorizedException(INVALID_QR));
+		return QrPreviewResponse.from(owner);
+	}
+
 	public VoterSessionResponse verifyByQrToken(QrAuthRequest request) {
 		var owner = ownerRepository.findByQrTokenWithUnit(request.getToken())
 				.orElseThrow(() -> new UnauthorizedException(INVALID_QR));
 
-		return establishSession(owner, "QR Code 驗證成功，歡迎進入投票系統");
+		return establishSession(owner, "報到成功，歡迎進入投票系統");
 	}
 
 	@Transactional(readOnly = true)

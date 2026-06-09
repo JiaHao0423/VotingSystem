@@ -2,6 +2,7 @@ package com.ben.com.backend.web.dto;
 
 import com.ben.com.backend.domain.entity.Owner;
 import com.ben.com.backend.domain.enums.BuildingType;
+import java.math.BigDecimal;
 import java.time.Instant;
 
 public record OwnerResponse(
@@ -10,6 +11,11 @@ public record OwnerResponse(
 		String unitShortName,
 		String fullAddress,
 		BuildingType buildingType,
+		Integer floor,
+		Integer unitNo,
+		Integer shopNo,
+		BigDecimal area,
+		BigDecimal ownershipRatio,
 		String name,
 		String phone,
 		boolean attended,
@@ -24,6 +30,11 @@ public record OwnerResponse(
 				unit.getShortName(),
 				unit.getFullAddress(),
 				unit.getBuildingType(),
+				unit.getFloor(),
+				unit.getUnitNo(),
+				unit.getShopNo(),
+				unit.getArea(),
+				unit.getOwnershipRatio(),
 				owner.getName(),
 				owner.getPhone(),
 				owner.isAttended(),

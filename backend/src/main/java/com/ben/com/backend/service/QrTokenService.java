@@ -18,6 +18,6 @@ public class QrTokenService {
 
 	public String buildAuthUrl(String baseUrl, String token) {
 		var normalized = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-		return normalized + "/auth?t=" + token;
+		return normalized + "/vote?t=" + token;
 	}
 }

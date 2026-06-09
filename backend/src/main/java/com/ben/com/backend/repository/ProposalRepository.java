@@ -1,0 +1,41 @@
+package com.ben.com.backend.repository;
+
+import com.ben.com.backend.domain.entity.Proposal;
+import com.ben.com.backend.domain.enums.ProposalStatus;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface ProposalRepository extends JpaRepository<Proposal, Long> {
+
+	@Query("""
+			SELECT p FROM Proposal p
+			JOIN FETCH p.meeting m
+			WHERE m.community.id = :communityId
+			ORDER BY p.sortOrder, p.id
+			""")
+	List<Proposal> findByCommunityIdWithMeeting(@Param("communityId") Long communityId);
+
+	@Query("""
+			SELECT p FROM Proposal p
+			JOIN FETCH p.meeting m
+			JOIN FETCH m.community
+			WHERE p.id = :id
+			""")
+	Optional<Proposal> findByIdWithMeeting(@Param("id") Long id);
+
+	@Query("""
+			SELECT p FROM Proposal p
+			JOIN FETCH p.meeting m
+			WHERE m.community.id = :communityId
+			AND p.visible = true
+			AND p.status IN :statuses
+			ORDER BY p.sortOrder, p.id
+			""")
+	List<Proposal> findVisibleByCommunityIdAndStatusIn(
+			@Param("communityId") Long communityId,
+			@Param("statuses") List<ProposalStatus> statuses
+	);
+}

@@ -9,6 +9,7 @@ import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.util.ShortNameNormalizer;
 import com.ben.com.backend.web.dto.CreateUnitRequest;
 import com.ben.com.backend.web.dto.UnitResponse;
+import com.ben.com.backend.web.dto.UpdateOwnerRequest;
 import java.util.HashSet;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -99,14 +100,70 @@ public class UnitService {
 				.orElseThrow(() -> new ResourceNotFoundException("找不到戶別：" + id));
 	}
 
-	private void validateUnitFields(CreateUnitRequest request) {
+	public Unit findByShortName(Long communityId, String shortName) {
+		return findByShortNameOptional(communityId, shortName)
+				.orElseThrow(() -> new ResourceNotFoundException("找不到戶別：" + ShortNameNormalizer.normalize(shortName)));
+	}
+
+	public java.util.Optional<Unit> findByShortNameOptional(Long communityId, String shortName) {
+		var normalized = ShortNameNormalizer.normalize(shortName);
+		return unitRepository.findByCommunityIdAndShortName(communityId, normalized);
+	}
+
+	public void applyImportUpdate(Unit unit, CreateUnitRequest request) {
+		validateUnitFields(request);
+		unit.setFullAddress(request.getFullAddress());
+		unit.setBuildingType(request.getBuildingType());
 		if (request.getBuildingType() == BuildingType.SHOP) {
-			if (request.getShopNo() == null) {
+			unit.setFloor(null);
+			unit.setUnitNo(null);
+			unit.setShopNo(request.getShopNo());
+		} else {
+			unit.setFloor(request.getFloor());
+			unit.setUnitNo(request.getUnitNo());
+			unit.setShopNo(null);
+		}
+		unit.setArea(request.getArea());
+		unit.setOwnershipRatio(request.getOwnershipRatio());
+	}
+
+	public void updateFromOwnerRequest(Long communityId, Unit unit, UpdateOwnerRequest request) {
+		validateUnitFields(request.getBuildingType(), request.getFloor(), request.getUnitNo(), request.getShopNo());
+
+		var shortName = ShortNameNormalizer.normalize(request.getUnitShortName());
+		if (!shortName.equals(unit.getShortName())
+				&& unitRepository.existsByCommunityIdAndShortName(communityId, shortName)) {
+			throw new ConflictException("簡稱已存在：" + shortName);
+		}
+
+		unit.setShortName(shortName);
+		unit.setFullAddress(request.getFullAddress());
+		unit.setBuildingType(request.getBuildingType());
+		if (request.getBuildingType() == BuildingType.SHOP) {
+			unit.setFloor(null);
+			unit.setUnitNo(null);
+			unit.setShopNo(request.getShopNo());
+		} else {
+			unit.setFloor(request.getFloor());
+			unit.setUnitNo(request.getUnitNo());
+			unit.setShopNo(null);
+		}
+		unit.setArea(request.getArea());
+		unit.setOwnershipRatio(request.getOwnershipRatio());
+	}
+
+	private void validateUnitFields(CreateUnitRequest request) {
+		validateUnitFields(request.getBuildingType(), request.getFloor(), request.getUnitNo(), request.getShopNo());
+	}
+
+	private void validateUnitFields(BuildingType buildingType, Integer floor, Integer unitNo, Integer shopNo) {
+		if (buildingType == BuildingType.SHOP) {
+			if (shopNo == null) {
 				throw new IllegalArgumentException("店面戶別必須提供 shopNo");
 			}
 			return;
 		}
-		if (request.getFloor() == null || request.getUnitNo() == null) {
+		if (floor == null || unitNo == null) {
 			throw new IllegalArgumentException("住宅戶別必須提供 floor 與 unitNo");
 		}
 	}

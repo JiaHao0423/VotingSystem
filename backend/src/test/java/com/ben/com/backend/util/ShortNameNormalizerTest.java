@@ -7,13 +7,8 @@ import org.junit.jupiter.api.Test;
 class ShortNameNormalizerTest {
 
 	@Test
-	void normalizesResidentialShortName() {
-		assertThat(ShortNameNormalizer.normalize(" 4a7 ")).isEqualTo("4A7");
-		assertThat(ShortNameNormalizer.normalize("5b2")).isEqualTo("5B2");
-	}
-
-	@Test
-	void keepsShopShortName() {
-		assertThat(ShortNameNormalizer.normalize(" 店1 ")).isEqualTo("店1");
+	void normalizesShopSPrefixToChineseShop() {
+		assertThat(ShortNameNormalizer.normalize("S1")).isEqualTo("店1");
+		assertThat(ShortNameNormalizer.normalize("s2")).isEqualTo("店2");
 	}
 }

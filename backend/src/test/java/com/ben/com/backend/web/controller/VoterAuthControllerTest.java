@@ -42,6 +42,7 @@ class VoterAuthControllerTest {
 
 	private MockMvc mockMvc;
 	private String plainAuthCode;
+	private String qrToken;
 	private String unitShortName;
 
 	@BeforeEach
@@ -67,7 +68,9 @@ class VoterAuthControllerTest {
 		request.setName("控制器測試");
 		request.setPhone("0911222333");
 
-		plainAuthCode = ownerService.create(community.getId(), request).authCode();
+		var created = ownerService.create(community.getId(), request);
+		plainAuthCode = created.authCode();
+		qrToken = created.qrToken();
 	}
 
 	@Test
@@ -96,6 +99,33 @@ class VoterAuthControllerTest {
 	void meWithoutSessionReturnsUnauthorized() throws Exception {
 		mockMvc.perform(get("/api/auth/me"))
 				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void qrPreviewReturnsOwnerInfoWithoutSession() throws Exception {
+		mockMvc.perform(get("/api/auth/qr/preview").param("token", qrToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ownerName").value("控制器測試"))
+				.andExpect(jsonPath("$.unitShortName").value(unitShortName));
+	}
+
+	@Test
+	void qrLoginCreatesSession() throws Exception {
+		var session = new MockHttpSession();
+
+		mockMvc.perform(post("/api/auth/qr")
+						.session(session)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "token": "%s" }
+								""".formatted(qrToken)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.name").value("控制器測試"))
+				.andExpect(jsonPath("$.attended").value(true));
+
+		mockMvc.perform(get("/api/auth/me").session(session))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.unitShortName").value(unitShortName));
 	}
 
 	@Test

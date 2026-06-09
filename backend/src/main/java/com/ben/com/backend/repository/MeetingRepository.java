@@ -10,5 +10,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
 	List<Meeting> findByCommunityIdOrderByMeetingDateDesc(Long communityId);
 
+	Optional<Meeting> findFirstByCommunityIdOrderByMeetingDateDesc(Long communityId);
+
 	Optional<Meeting> findFirstByCommunityIdAndStatusOrderByMeetingDateDesc(Long communityId, MeetingStatus status);
 }

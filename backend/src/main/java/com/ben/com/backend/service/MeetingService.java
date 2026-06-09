@@ -25,6 +25,11 @@ public class MeetingService {
 		return meetingRepository.findByCommunityIdOrderByMeetingDateDesc(communityId);
 	}
 
+	public Meeting getDefaultMeeting(Long communityId) {
+		return meetingRepository.findFirstByCommunityIdOrderByMeetingDateDesc(communityId)
+				.orElseThrow(() -> new ResourceNotFoundException("尚未建立區權會場次"));
+	}
+
 	public Meeting getActiveMeeting(Long communityId) {
 		return meetingRepository.findFirstByCommunityIdAndStatusOrderByMeetingDateDesc(communityId, MeetingStatus.ACTIVE)
 				.orElseThrow(() -> new ResourceNotFoundException("目前沒有進行中的區權會"));

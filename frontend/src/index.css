@@ -1,0 +1,174 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --font-sans: 'Noto Sans TC', ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+:root {
+  --background: oklch(0.985 0.004 247);
+  --foreground: oklch(0.21 0.04 257);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.04 257);
+  --primary: oklch(0.42 0.11 258);
+  --primary-foreground: oklch(0.985 0.004 247);
+  --secondary: oklch(0.96 0.01 250);
+  --secondary-foreground: oklch(0.32 0.06 258);
+  --muted: oklch(0.96 0.01 250);
+  --muted-foreground: oklch(0.55 0.03 257);
+  --accent: oklch(0.93 0.05 195);
+  --accent-foreground: oklch(0.3 0.07 230);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.9 0.012 250);
+  --input: oklch(0.9 0.012 250);
+  --ring: oklch(0.42 0.11 258);
+  --chart-3: oklch(0.65 0.13 145);
+  --chart-4: oklch(0.7 0.15 70);
+  --chart-5: oklch(0.6 0.18 25);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.27 0.05 258);
+  --sidebar-foreground: oklch(0.95 0.01 250);
+  --sidebar-primary: oklch(0.7 0.12 200);
+  --sidebar-primary-foreground: oklch(0.2 0.04 257);
+  --sidebar-accent: oklch(0.34 0.06 258);
+  --sidebar-accent-foreground: oklch(0.95 0.01 250);
+  --sidebar-border: oklch(0.34 0.06 258);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .owner-qr-card,
+  .owner-qr-card * {
+    visibility: visible;
+  }
+
+  .owner-qr-card {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qr-bulk-print-root,
+  .qr-bulk-print-root * {
+    visibility: visible;
+  }
+
+  .qr-print-toolbar {
+    display: none !important;
+  }
+
+  .qr-bulk-print-pages {
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .qr-print-sheet {
+    width: 210mm;
+    height: 297mm;
+    padding: 8mm;
+    gap: 4mm;
+    page-break-after: always;
+    break-after: page;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .qr-print-code {
+    width: 32mm !important;
+    height: 32mm !important;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+.qr-print-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+.qr-print-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 10px 8px;
+}
+
+.qr-print-block {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.qr-print-block .qr-print-code {
+  display: block;
+}
+
+.qr-print-labels {
+  width: 100%;
+  text-align: left;
+}
+
+.qr-print-line {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.qr-print-field {
+  color: var(--muted-foreground);
+}
+
+.qr-print-value {
+  margin-left: 2px;
+  font-weight: 600;
+  color: var(--foreground);
+}

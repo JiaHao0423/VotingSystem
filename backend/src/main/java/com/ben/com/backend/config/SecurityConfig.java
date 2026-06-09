@@ -52,12 +52,18 @@ public class SecurityConfig {
 		http
 				.cors(Customizer.withDefaults())
 				.csrf(csrf -> csrf.disable())
-				.securityContext(context -> context.securityContextRepository(securityContextRepository))
+				.securityContext(context -> context
+						.securityContextRepository(securityContextRepository)
+						.requireExplicitSave(false)
+				)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.GET, "/api/community", "/api/units/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/auth/qr/preview").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/auth/verify", "/api/auth/qr").permitAll()
-						.requestMatchers("/api/auth/me", "/api/auth/logout").hasRole("VOTER")
+						.requestMatchers("/api/auth/me").hasRole("VOTER")
+						.requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
+						.requestMatchers("/api/proposals/**").hasRole("VOTER")
 						.anyRequest().permitAll()
 				);
 

@@ -2,8 +2,11 @@ package com.ben.com.backend.web.controller;
 
 import com.ben.com.backend.service.OwnerService;
 import com.ben.com.backend.web.dto.AuthCodeRegeneratedResponse;
+import com.ben.com.backend.web.dto.BatchDeleteOwnersRequest;
+import com.ben.com.backend.web.dto.BatchDeleteOwnersResponse;
 import com.ben.com.backend.web.dto.CreateOwnerRequest;
 import com.ben.com.backend.web.dto.OwnerCreatedResponse;
+import com.ben.com.backend.web.dto.OwnerQrPrintItemResponse;
 import com.ben.com.backend.web.dto.OwnerResponse;
 import com.ben.com.backend.web.dto.QrCodeResponse;
 import com.ben.com.backend.web.dto.UpdateOwnerRequest;
@@ -35,6 +38,11 @@ public class AdminOwnerController {
 		return ownerService.list(communityId);
 	}
 
+	@GetMapping("/qr/print-all")
+	public List<OwnerQrPrintItemResponse> listQrPrintItems(@PathVariable Long communityId) {
+		return ownerService.listQrPrintItems(communityId);
+	}
+
 	@GetMapping("/{ownerId}")
 	public OwnerResponse get(@PathVariable Long communityId, @PathVariable Long ownerId) {
 		return ownerService.getById(ownerId);
@@ -55,13 +63,22 @@ public class AdminOwnerController {
 			@PathVariable Long ownerId,
 			@Valid @RequestBody UpdateOwnerRequest request
 	) {
-		return ownerService.update(ownerId, request);
+		return ownerService.update(communityId, ownerId, request);
+	}
+
+	@PostMapping("/batch-delete")
+	public BatchDeleteOwnersResponse batchDelete(
+			@PathVariable Long communityId,
+			@Valid @RequestBody BatchDeleteOwnersRequest request
+	) {
+		var deleted = ownerService.deleteMany(communityId, request.ownerIds());
+		return new BatchDeleteOwnersResponse(deleted);
 	}
 
 	@DeleteMapping("/{ownerId}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void delete(@PathVariable Long communityId, @PathVariable Long ownerId) {
-		ownerService.delete(ownerId);
+		ownerService.delete(communityId, ownerId);
 	}
 
 	@PostMapping("/{ownerId}/regenerate-code")
