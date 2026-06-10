@@ -45,7 +45,7 @@ public class AdminOwnerController {
 
 	@GetMapping("/{ownerId}")
 	public OwnerResponse get(@PathVariable Long communityId, @PathVariable Long ownerId) {
-		return ownerService.getById(ownerId);
+		return ownerService.getById(communityId, ownerId);
 	}
 
 	@PostMapping
@@ -86,16 +86,16 @@ public class AdminOwnerController {
 			@PathVariable Long communityId,
 			@PathVariable Long ownerId
 	) {
-		return ownerService.regenerateAuthCode(ownerId);
+		return ownerService.regenerateAuthCode(communityId, ownerId);
 	}
 
 	@GetMapping("/{ownerId}/qr")
 	public QrCodeResponse getQrCode(@PathVariable Long communityId, @PathVariable Long ownerId) {
-		return ownerService.getQrCode(ownerId);
+		return ownerService.getQrCode(communityId, ownerId);
 	}
 
 	@PostMapping("/{ownerId}/regenerate-qr")
 	public QrCodeResponse regenerateQr(@PathVariable Long communityId, @PathVariable Long ownerId) {
-		return ownerService.regenerateQrToken(ownerId);
+		return ownerService.regenerateQrToken(communityId, ownerId);
 	}
 }

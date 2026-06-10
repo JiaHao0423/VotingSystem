@@ -57,8 +57,8 @@ public class UnitService {
 	}
 
 	@Transactional(readOnly = true)
-	public UnitResponse getById(Long id) {
-		var unit = findUnit(id);
+	public UnitResponse getById(Long communityId, Long id) {
+		var unit = findUnitInCommunity(communityId, id);
 		var hasOwner = ownerRepository.existsByUnitId(unit.getId());
 		return UnitResponse.from(unit, hasOwner);
 	}
@@ -87,8 +87,8 @@ public class UnitService {
 		return UnitResponse.from(unit, false);
 	}
 
-	public void delete(Long id) {
-		var unit = findUnit(id);
+	public void delete(Long communityId, Long id) {
+		var unit = findUnitInCommunity(communityId, id);
 		if (ownerRepository.existsByUnitId(unit.getId())) {
 			throw new ConflictException("此戶別已有所有權人，無法刪除");
 		}
@@ -98,6 +98,14 @@ public class UnitService {
 	Unit findUnit(Long id) {
 		return unitRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("找不到戶別：" + id));
+	}
+
+	Unit findUnitInCommunity(Long communityId, Long id) {
+		var unit = findUnit(id);
+		if (!unit.getCommunity().getId().equals(communityId)) {
+			throw new ResourceNotFoundException("找不到戶別：" + id);
+		}
+		return unit;
 	}
 
 	public Unit findByShortName(Long communityId, String shortName) {

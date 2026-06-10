@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAdminAuth } from '@/context/admin-auth-context'
-import { COMMUNITY_NAME } from '@/lib/labels'
+import { SYSTEM_NAME } from '@/lib/labels'
 
 export function AdminLoginPage() {
   const navigate = useNavigate()
   const { login, isAuthenticated, loading } = useAdminAuth()
-  const [username, setUsername] = useState('admin')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -24,9 +24,9 @@ export function AdminLoginPage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await login(username, password)
+      const me = await login(username, password)
       toast.success('管理員登入成功')
-      navigate('/admin')
+      navigate(me.role === 'SUPER_ADMIN' ? '/admin/system' : '/admin')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '登入失敗')
     } finally {
@@ -41,7 +41,7 @@ export function AdminLoginPage() {
           <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Building2 className="size-7" aria-hidden="true" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold">{COMMUNITY_NAME}</h1>
+          <h1 className="mt-4 text-2xl font-bold">{SYSTEM_NAME}</h1>
           <p className="mt-1 text-sm text-muted-foreground">後台管理系統</p>
         </div>
 
@@ -51,7 +51,7 @@ export function AdminLoginPage() {
               <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
               管理員登入
             </CardTitle>
-            <CardDescription>請輸入後台帳號密碼（預設 admin / admin）</CardDescription>
+            <CardDescription>請輸入您的管理帳號與密碼</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">

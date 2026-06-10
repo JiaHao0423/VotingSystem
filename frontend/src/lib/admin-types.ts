@@ -9,6 +9,42 @@ export interface Community {
   createdAt: string
 }
 
+export type AdminRole = 'SUPER_ADMIN' | 'COMMUNITY_ADMIN'
+
+export interface AdminMe {
+  id: number
+  username: string
+  displayName: string | null
+  role: AdminRole
+  community: Community | null
+}
+
+export interface AdminAccount {
+  id: number
+  username: string
+  displayName: string | null
+  role: AdminRole
+  communityId: number | null
+  communityName: string | null
+  createdAt: string
+}
+
+export interface CreateCommunityBody {
+  name: string
+  totalHouseholds: number
+  totalArea?: number | null
+  address?: string
+  meetingName?: string
+}
+
+export interface CreateAdminAccountBody {
+  username: string
+  password: string
+  displayName?: string
+  role: AdminRole
+  communityId?: number | null
+}
+
 export interface AdminOwner {
   id: number
   unitId: number

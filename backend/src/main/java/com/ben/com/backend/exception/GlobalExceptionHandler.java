@@ -2,6 +2,7 @@ package com.ben.com.backend.exception;
 
 import java.time.Instant;
 import java.util.Map;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -9,12 +10,18 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@NullMarked
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
 	@ExceptionHandler(UnauthorizedException.class)
 	public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
 		return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
+	}
+
+	@ExceptionHandler(ForbiddenException.class)
+	public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
+		return error(HttpStatus.FORBIDDEN, ex.getMessage());
 	}
 
 	@ExceptionHandler(ResourceNotFoundException.class)

@@ -33,6 +33,7 @@ class VoterAuthServiceTest {
 	@Autowired
 	private UnitRepository unitRepository;
 
+	private Long communityId;
 	private String plainAuthCode;
 	private String qrToken;
 	private String unitShortName;
@@ -40,6 +41,7 @@ class VoterAuthServiceTest {
 	@BeforeEach
 	void setUp() {
 		var community = communityService.getDefaultCommunity();
+		communityId = community.getId();
 		var unit = unitRepository.save(new Unit(
 				community,
 				"VTEST",
@@ -66,6 +68,7 @@ class VoterAuthServiceTest {
 	@Test
 	void verifyByUnitAndCodeEstablishesSessionAndMarksAttended() {
 		var request = new VerifyAuthRequest();
+		request.setCommunityId(communityId);
 		request.setUnitShortName(unitShortName);
 		request.setAuthCode(plainAuthCode);
 
@@ -90,6 +93,7 @@ class VoterAuthServiceTest {
 	@Test
 	void verifyWithWrongCodeFails() {
 		var request = new VerifyAuthRequest();
+		request.setCommunityId(communityId);
 		request.setUnitShortName(unitShortName);
 		request.setAuthCode("WRONG1");
 
@@ -114,6 +118,7 @@ class VoterAuthServiceTest {
 		));
 
 		var request = new VerifyAuthRequest();
+		request.setCommunityId(communityId);
 		request.setUnitShortName(emptyUnit.getShortName());
 		request.setAuthCode("ABC123");
 

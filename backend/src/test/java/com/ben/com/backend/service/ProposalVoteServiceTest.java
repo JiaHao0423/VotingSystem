@@ -84,7 +84,7 @@ class ProposalVoteServiceTest {
 		createRequest.setType(ProposalType.GENERAL);
 		createRequest.setVisible(true);
 		proposalId = proposalService.create(community.getId(), createRequest).id();
-		proposalService.start(proposalId);
+		proposalService.start(community.getId(), proposalId);
 	}
 
 	@Test
@@ -105,7 +105,7 @@ class ProposalVoteServiceTest {
 
 	@Test
 	void cannotVoteWhenProposalNotActive() {
-		proposalService.stop(proposalId);
+		proposalService.stop(voter.communityId(), proposalId);
 
 		var request = new SubmitVoteRequest();
 		request.setChoice(VoteChoice.DISAGREE);

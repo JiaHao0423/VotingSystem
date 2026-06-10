@@ -12,7 +12,6 @@ import com.ben.com.backend.repository.VoteRecordRepository;
 import com.ben.com.backend.security.VoterPrincipal;
 import com.ben.com.backend.web.dto.CreateProposalRequest;
 import com.ben.com.backend.web.dto.SubmitVoteRequest;
-import com.ben.com.backend.service.CommunityService;
 import com.ben.com.backend.web.dto.CreateOwnerRequest;
 import com.ben.com.backend.web.dto.UpdateOwnerRequest;
 import java.math.BigDecimal;
@@ -204,7 +203,7 @@ class OwnerServiceTest {
 		proposalRequest.setType(ProposalType.GENERAL);
 		proposalRequest.setVisible(true);
 		var proposal = proposalService.create(community.getId(), proposalRequest);
-		proposalService.start(proposal.id());
+		proposalService.start(community.getId(), proposal.id());
 
 		var voter = new VoterPrincipal(
 				created.owner().id(),

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Building2 } from 'lucide-react'
-import { COMMUNITY_NAME } from '@/lib/labels'
+import { SYSTEM_NAME } from '@/lib/labels'
 
 export function SiteHeader({
   subtitle,
@@ -19,7 +19,7 @@ export function SiteHeader({
           <Building2 className="size-5" aria-hidden="true" />
         </Link>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold leading-tight">{communityName ?? COMMUNITY_NAME}</p>
+          <p className="truncate text-sm font-bold leading-tight">{communityName ?? SYSTEM_NAME}</p>
           <p className="truncate text-xs text-primary-foreground/70">{subtitle ?? '區分所有權人會議'}</p>
         </div>
       </div>

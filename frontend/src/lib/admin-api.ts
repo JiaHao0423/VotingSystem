@@ -1,11 +1,15 @@
 import type { ProposalResult } from './types'
 import type {
+  AdminAccount,
+  AdminMe,
   AdminOwner,
   AdminProposal,
   AdminResultDetail,
   AdminUnit,
   AuthCodeRegenerated,
   Community,
+  CreateAdminAccountBody,
+  CreateCommunityBody,
   CreateProposalBody,
   OwnerCreated,
   OwnerQrPrintItem,
@@ -58,23 +62,60 @@ async function adminFetch(path: string, init?: RequestInit) {
 }
 
 export const adminApi = {
-  async verifyLogin(username: string, password: string): Promise<Community> {
+  async verifyLogin(username: string, password: string): Promise<AdminMe> {
     const prev = creds
     creds = { username, password }
     try {
-      const community = await this.getCommunity()
-      await adminFetch(`/api/admin/communities/${community.id}/proposals`).then((r) =>
-        handleResponse(r),
-      )
-      return community
+      return await this.getMe()
     } catch (e) {
       creds = prev
       throw e
     }
   },
 
-  getCommunity(): Promise<Community> {
-    return fetch('/api/community').then((r) => handleResponse<Community>(r))
+  getMe(): Promise<AdminMe> {
+    return adminFetch('/api/admin/me').then((r) => handleResponse<AdminMe>(r))
+  },
+
+  // ---- 超級管理員：社區與帳號管理 ----
+
+  listSystemCommunities(): Promise<Community[]> {
+    return adminFetch('/api/admin/system/communities').then((r) =>
+      handleResponse<Community[]>(r),
+    )
+  },
+
+  createCommunity(body: CreateCommunityBody): Promise<Community> {
+    return adminFetch('/api/admin/system/communities', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }).then((r) => handleResponse<Community>(r))
+  },
+
+  listAdminAccounts(): Promise<AdminAccount[]> {
+    return adminFetch('/api/admin/system/admins').then((r) =>
+      handleResponse<AdminAccount[]>(r),
+    )
+  },
+
+  createAdminAccount(body: CreateAdminAccountBody): Promise<AdminAccount> {
+    return adminFetch('/api/admin/system/admins', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }).then((r) => handleResponse<AdminAccount>(r))
+  },
+
+  deleteAdminAccount(adminId: number): Promise<void> {
+    return adminFetch(`/api/admin/system/admins/${adminId}`, {
+      method: 'DELETE',
+    }).then((r) => handleResponse<void>(r))
+  },
+
+  resetAdminPassword(adminId: number, password: string): Promise<void> {
+    return adminFetch(`/api/admin/system/admins/${adminId}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
+    }).then((r) => handleResponse<void>(r))
   },
 
   listProposals(communityId: number): Promise<AdminProposal[]> {

@@ -41,7 +41,7 @@ public class VoterAuthService {
 	}
 
 	public VoterSessionResponse verifyByUnitAndCode(VerifyAuthRequest request) {
-		var community = communityService.getDefaultCommunity();
+		var community = communityService.getById(request.getCommunityId());
 		var shortName = ShortNameNormalizer.normalize(request.getUnitShortName());
 		var authCode = normalizeAuthCode(request.getAuthCode());
 

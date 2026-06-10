@@ -19,6 +19,7 @@ import { AdminResultDetailPage } from '@/pages/admin/admin-result-detail-page'
 import { AdminOwnersPage } from '@/pages/admin/admin-owners-page'
 import { AdminOwnersPrintQrPage } from '@/pages/admin/admin-owners-print-qr-page'
 import { AdminUnitsImportPage } from '@/pages/admin/admin-units-import-page'
+import { AdminSystemPage } from '@/pages/admin/admin-system-page'
 
 function LegacyAuthRedirect() {
   const { search } = useLocation()
@@ -84,6 +85,7 @@ export function App() {
               <Route path="results/:id" element={<AdminResultDetailPage />} />
               <Route path="owners" element={<AdminOwnersPage />} />
               <Route path="units/import" element={<AdminUnitsImportPage />} />
+              <Route path="system" element={<AdminSystemPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -3,6 +3,7 @@ package com.ben.com.backend.service;
 import com.ben.com.backend.domain.entity.Community;
 import com.ben.com.backend.exception.ResourceNotFoundException;
 import com.ben.com.backend.repository.CommunityRepository;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,11 @@ public class CommunityService {
 		this.communityRepository = communityRepository;
 	}
 
+	public List<Community> list() {
+		return communityRepository.findAll();
+	}
+
+	/** 僅供測試與初始化資料使用 */
 	public Community getDefaultCommunity() {
 		return communityRepository.findByName("鴻邑晴川硯")
 				.orElseThrow(() -> new ResourceNotFoundException("尚未初始化社區資料"));

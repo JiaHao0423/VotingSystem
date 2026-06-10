@@ -3,7 +3,7 @@ import { Building2, QrCode, ClipboardList, ArrowRight } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { COMMUNITY_NAME } from '@/lib/labels'
+import { SYSTEM_NAME } from '@/lib/labels'
 
 const flow = [
   { icon: QrCode, label: '掃描 QR Code', href: '/vote' },
@@ -19,7 +19,7 @@ export function HomePage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Building2 className="size-8" aria-hidden="true" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-foreground">{COMMUNITY_NAME}</h1>
+          <h1 className="mt-4 text-2xl font-bold text-foreground">{SYSTEM_NAME}</h1>
           <p className="mt-2 text-pretty text-sm leading-relaxed text-muted-foreground">
             高效、透明、公正且符合法規的區分所有權人會議電子投票平台
           </p>

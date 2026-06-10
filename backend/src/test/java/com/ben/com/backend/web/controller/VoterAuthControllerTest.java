@@ -41,6 +41,7 @@ class VoterAuthControllerTest {
 	private UnitRepository unitRepository;
 
 	private MockMvc mockMvc;
+	private Long communityId;
 	private String plainAuthCode;
 	private String qrToken;
 	private String unitShortName;
@@ -50,6 +51,7 @@ class VoterAuthControllerTest {
 		mockMvc = webAppContextSetup(webApplicationContext).build();
 
 		var community = communityService.getDefaultCommunity();
+		communityId = community.getId();
 		var unit = unitRepository.save(new Unit(
 				community,
 				"3A1",
@@ -82,10 +84,11 @@ class VoterAuthControllerTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{
+								  "communityId": %d,
 								  "unitShortName": "%s",
 								  "authCode": "%s"
 								}
-								""".formatted(unitShortName, plainAuthCode)))
+								""".formatted(communityId, unitShortName, plainAuthCode)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.unitShortName").value(unitShortName))
 				.andExpect(jsonPath("$.attended").value(true));
@@ -130,7 +133,7 @@ class VoterAuthControllerTest {
 
 	@Test
 	void unitOptionsIncludesSeededShops() throws Exception {
-		mockMvc.perform(get("/api/units/options"))
+		mockMvc.perform(get("/api/units/options").param("communityId", String.valueOf(communityId)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.communityName").value("鴻邑晴川硯"))
 				.andExpect(jsonPath("$.buildings[2].label").value("店面"))

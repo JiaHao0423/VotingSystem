@@ -46,7 +46,7 @@ export const VOTE_OPTIONS: { choice: VoteChoice; label: string }[] = [
   { choice: 'ABSTAIN', label: '棄權' },
 ]
 
-export const COMMUNITY_NAME = '鴻邑晴川硯'
+export const SYSTEM_NAME = '社區電子投票系統'
 
 export function buildingTypeLabel(type: string): string {
   const map: Record<string, string> = {

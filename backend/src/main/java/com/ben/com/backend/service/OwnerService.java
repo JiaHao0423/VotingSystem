@@ -65,8 +65,8 @@ public class OwnerService {
 	}
 
 	@Transactional(readOnly = true)
-	public OwnerResponse getById(Long id) {
-		return OwnerResponse.from(findOwner(id));
+	public OwnerResponse getById(Long communityId, Long id) {
+		return OwnerResponse.from(findOwnerInCommunity(communityId, id));
 	}
 
 	public OwnerCreatedResponse create(Long communityId, CreateOwnerRequest request) {
@@ -99,10 +99,7 @@ public class OwnerService {
 	}
 
 	public OwnerResponse update(Long communityId, Long id, UpdateOwnerRequest request) {
-		var owner = findOwner(id);
-		if (!owner.getUnit().getCommunity().getId().equals(communityId)) {
-			throw new ResourceNotFoundException("所有權人不屬於此社區");
-		}
+		var owner = findOwnerInCommunity(communityId, id);
 		owner.setName(request.getName());
 		owner.setPhone(normalizePhone(request.getPhone()));
 		owner.setAttended(request.isAttended());
@@ -162,8 +159,8 @@ public class OwnerService {
 		create(communityId, request);
 	}
 
-	public AuthCodeRegeneratedResponse regenerateAuthCode(Long id) {
-		var owner = findOwner(id);
+	public AuthCodeRegeneratedResponse regenerateAuthCode(Long communityId, Long id) {
+		var owner = findOwnerInCommunity(communityId, id);
 		var plainCode = authCodeService.generatePlainCode();
 		owner.setAuthCodeHash(authCodeService.hashCode(plainCode));
 		return new AuthCodeRegeneratedResponse(
@@ -174,13 +171,13 @@ public class OwnerService {
 		);
 	}
 
-	public QrCodeResponse getQrCode(Long id) {
-		var owner = findOwner(id);
+	public QrCodeResponse getQrCode(Long communityId, Long id) {
+		var owner = findOwnerInCommunity(communityId, id);
 		return QrCodeResponse.from(owner, qrTokenService.buildAuthUrl(voterBaseUrl, owner.getQrToken()));
 	}
 
-	public QrCodeResponse regenerateQrToken(Long id) {
-		var owner = findOwner(id);
+	public QrCodeResponse regenerateQrToken(Long communityId, Long id) {
+		var owner = findOwnerInCommunity(communityId, id);
 		var newToken = qrTokenService.generateToken();
 		owner.setQrToken(newToken);
 		return QrCodeResponse.from(owner, qrTokenService.buildAuthUrl(voterBaseUrl, newToken));
@@ -189,6 +186,14 @@ public class OwnerService {
 	Owner findOwner(Long id) {
 		return ownerRepository.findByIdWithUnit(id)
 				.orElseThrow(() -> new ResourceNotFoundException("找不到所有權人：" + id));
+	}
+
+	Owner findOwnerInCommunity(Long communityId, Long id) {
+		var owner = findOwner(id);
+		if (!owner.getUnit().getCommunity().getId().equals(communityId)) {
+			throw new ResourceNotFoundException("所有權人不屬於此社區");
+		}
+		return owner;
 	}
 
 	private com.ben.com.backend.domain.entity.Unit resolveOrCreateUnit(
@@ -203,11 +208,8 @@ public class OwnerService {
 		}
 
 		var normalized = ShortNameNormalizer.normalize(request.getUnitShortName());
-		var existing = unitService.findByShortNameOptional(communityId, normalized);
-		if (existing.isPresent()) {
-			return existing.get();
-		}
-		return createUnitForOwner(communityId, request, normalized);
+		return unitService.findByShortNameOptional(communityId, normalized)
+				.orElseGet(() -> createUnitForOwner(communityId, request, normalized));
 	}
 
 	private com.ben.com.backend.domain.entity.Unit createUnitForOwner(

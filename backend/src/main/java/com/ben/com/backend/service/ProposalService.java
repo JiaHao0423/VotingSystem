@@ -60,13 +60,13 @@ public class ProposalService {
 	}
 
 	@Transactional(readOnly = true)
-	public ProposalResponse getForAdmin(Long proposalId) {
-		return ProposalResponse.from(findProposal(proposalId), false);
+	public ProposalResponse getForAdmin(Long communityId, Long proposalId) {
+		return ProposalResponse.from(findProposalInCommunity(communityId, proposalId), false);
 	}
 
 	@Transactional(readOnly = true)
-	public ProposalResponse getForVoter(Long proposalId, Long ownerId) {
-		var proposal = findProposal(proposalId);
+	public ProposalResponse getForVoter(Long communityId, Long proposalId, Long ownerId) {
+		var proposal = findProposalInCommunity(communityId, proposalId);
 		ensureVoterVisible(proposal);
 		return ProposalResponse.from(proposal, voteRecordRepository.existsByProposalIdAndOwnerId(proposalId, ownerId));
 	}
@@ -85,8 +85,8 @@ public class ProposalService {
 		return ProposalResponse.from(proposal, false);
 	}
 
-	public ProposalResponse update(Long proposalId, UpdateProposalRequest request) {
-		var proposal = findProposal(proposalId);
+	public ProposalResponse update(Long communityId, Long proposalId, UpdateProposalRequest request) {
+		var proposal = findProposalInCommunity(communityId, proposalId);
 		ensureEditable(proposal);
 		proposal.setProposalNumber(request.getProposalNumber());
 		proposal.setTitle(request.getTitle());
@@ -96,8 +96,8 @@ public class ProposalService {
 		return ProposalResponse.from(proposal, false);
 	}
 
-	public void delete(Long proposalId) {
-		var proposal = findProposal(proposalId);
+	public void delete(Long communityId, Long proposalId) {
+		var proposal = findProposalInCommunity(communityId, proposalId);
 		ensureEditable(proposal);
 		if (voteRecordRepository.countByProposalId(proposalId) > 0) {
 			throw new ConflictException("已有投票紀錄的提案無法刪除");
@@ -105,8 +105,8 @@ public class ProposalService {
 		proposalRepository.delete(proposal);
 	}
 
-	public ProposalResponse start(Long proposalId) {
-		var proposal = findProposal(proposalId);
+	public ProposalResponse start(Long communityId, Long proposalId) {
+		var proposal = findProposalInCommunity(communityId, proposalId);
 		if (proposal.getStatus() == ProposalStatus.ACTIVE) {
 			return ProposalResponse.from(proposal, false);
 		}
@@ -121,8 +121,8 @@ public class ProposalService {
 		return ProposalResponse.from(proposal, false);
 	}
 
-	public ProposalResponse stop(Long proposalId) {
-		var proposal = findProposal(proposalId);
+	public ProposalResponse stop(Long communityId, Long proposalId) {
+		var proposal = findProposalInCommunity(communityId, proposalId);
 		if (proposal.getStatus() != ProposalStatus.ACTIVE) {
 			throw new ConflictException("僅進行中的提案可以終止投票");
 		}
@@ -134,15 +134,15 @@ public class ProposalService {
 	}
 
 	@Transactional(readOnly = true)
-	public ProposalResultResponse getResult(Long proposalId) {
-		var proposal = findProposal(proposalId);
+	public ProposalResultResponse getResult(Long communityId, Long proposalId) {
+		var proposal = findProposalInCommunity(communityId, proposalId);
 		var community = proposal.getMeeting().getCommunity();
 		return ProposalResultCalculator.compute(proposal, community, voteRecordRepository);
 	}
 
 	@Transactional(readOnly = true)
-	public AdminProposalResultResponse getAdminResult(Long proposalId) {
-		var proposal = findProposal(proposalId);
+	public AdminProposalResultResponse getAdminResult(Long communityId, Long proposalId) {
+		var proposal = findProposalInCommunity(communityId, proposalId);
 		var community = proposal.getMeeting().getCommunity();
 		var summary = ProposalResultCalculator.compute(proposal, community, voteRecordRepository);
 		var voters = voteRecordRepository.findByProposalIdWithOwner(proposalId).stream()
@@ -161,6 +161,14 @@ public class ProposalService {
 	Proposal findProposal(Long id) {
 		return proposalRepository.findByIdWithMeeting(id)
 				.orElseThrow(() -> new ResourceNotFoundException("找不到提案：" + id));
+	}
+
+	Proposal findProposalInCommunity(Long communityId, Long id) {
+		var proposal = findProposal(id);
+		if (!proposal.getMeeting().getCommunity().getId().equals(communityId)) {
+			throw new ResourceNotFoundException("找不到提案：" + id);
+		}
+		return proposal;
 	}
 
 	private void ensureEditable(Proposal proposal) {

@@ -41,8 +41,8 @@ public class VoterAuthController {
 	}
 
 	@GetMapping("/units/options")
-	public UnitOptionsResponse unitOptions() {
-		return unitOptionsService.getOptions();
+	public UnitOptionsResponse unitOptions(@RequestParam Long communityId) {
+		return unitOptionsService.getOptions(communityId);
 	}
 
 	@PostMapping("/auth/verify")

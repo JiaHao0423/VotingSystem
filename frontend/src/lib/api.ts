@@ -37,14 +37,26 @@ function fetchApi(path: string, init?: RequestInit) {
 }
 
 export const api = {
-  getUnitOptions(): Promise<UnitOptionsResponse> {
-    return fetchApi('/api/units/options').then((res) => handleResponse<UnitOptionsResponse>(res))
+  getCommunities(): Promise<{ id: number; name: string; address: string | null }[]> {
+    return fetchApi('/api/communities').then((res) =>
+      handleResponse<{ id: number; name: string; address: string | null }[]>(res),
+    )
   },
 
-  verifyAuth(unitShortName: string, authCode: string): Promise<VoterSession> {
+  getUnitOptions(communityId: number): Promise<UnitOptionsResponse> {
+    return fetchApi(`/api/units/options?communityId=${communityId}`).then((res) =>
+      handleResponse<UnitOptionsResponse>(res),
+    )
+  },
+
+  verifyAuth(
+    communityId: number,
+    unitShortName: string,
+    authCode: string,
+  ): Promise<VoterSession> {
     return fetchApi('/api/auth/verify', {
       method: 'POST',
-      body: JSON.stringify({ unitShortName, authCode }),
+      body: JSON.stringify({ communityId, unitShortName, authCode }),
     }).then((res) => handleResponse<VoterSession>(res))
   },
 

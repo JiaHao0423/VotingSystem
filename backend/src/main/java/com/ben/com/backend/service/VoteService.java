@@ -32,7 +32,7 @@ public class VoteService {
 	}
 
 	public ProposalResultResponse submitVote(Long proposalId, VoterPrincipal voter, SubmitVoteRequest request) {
-		var proposal = proposalService.findProposal(proposalId);
+		var proposal = proposalService.findProposalInCommunity(voter.communityId(), proposalId);
 		if (proposal.getStatus() != ProposalStatus.ACTIVE) {
 			throw new ConflictException("此提案目前不在投票時間內");
 		}
@@ -56,7 +56,7 @@ public class VoteService {
 
 	@Transactional(readOnly = true)
 	public ProposalResultResponse getResultForVoter(Long proposalId, VoterPrincipal voter) {
-		var proposal = proposalService.findProposal(proposalId);
+		var proposal = proposalService.findProposalInCommunity(voter.communityId(), proposalId);
 		if (!proposal.isVisible() || proposal.getStatus() == ProposalStatus.DRAFT) {
 			throw new ResourceNotFoundException("找不到提案：" + proposalId);
 		}

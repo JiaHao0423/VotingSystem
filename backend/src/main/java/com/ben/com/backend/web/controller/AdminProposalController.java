@@ -36,7 +36,7 @@ public class AdminProposalController {
 
 	@GetMapping("/{proposalId}")
 	public ProposalResponse get(@PathVariable Long communityId, @PathVariable Long proposalId) {
-		return proposalService.getForAdmin(proposalId);
+		return proposalService.getForAdmin(communityId, proposalId);
 	}
 
 	@PostMapping
@@ -51,32 +51,32 @@ public class AdminProposalController {
 			@PathVariable Long proposalId,
 			@Valid @RequestBody UpdateProposalRequest request
 	) {
-		return proposalService.update(proposalId, request);
+		return proposalService.update(communityId, proposalId, request);
 	}
 
 	@DeleteMapping("/{proposalId}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void delete(@PathVariable Long communityId, @PathVariable Long proposalId) {
-		proposalService.delete(proposalId);
+		proposalService.delete(communityId, proposalId);
 	}
 
 	@PostMapping("/{proposalId}/start")
 	public ProposalResponse start(@PathVariable Long communityId, @PathVariable Long proposalId) {
-		return proposalService.start(proposalId);
+		return proposalService.start(communityId, proposalId);
 	}
 
 	@PostMapping("/{proposalId}/stop")
 	public ProposalResponse stop(@PathVariable Long communityId, @PathVariable Long proposalId) {
-		return proposalService.stop(proposalId);
+		return proposalService.stop(communityId, proposalId);
 	}
 
 	@GetMapping("/{proposalId}/results")
 	public ProposalResultResponse results(@PathVariable Long communityId, @PathVariable Long proposalId) {
-		return proposalService.getResult(proposalId);
+		return proposalService.getResult(communityId, proposalId);
 	}
 
 	@GetMapping("/{proposalId}/results/detail")
 	public AdminProposalResultResponse resultsDetail(@PathVariable Long communityId, @PathVariable Long proposalId) {
-		return proposalService.getAdminResult(proposalId);
+		return proposalService.getAdminResult(communityId, proposalId);
 	}
 }

@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   FileText,
@@ -8,13 +8,15 @@ import {
   ShieldCheck,
   Building2,
   ArrowLeft,
+  ArrowLeftRight,
+  Settings,
   LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAdminAuth } from '@/context/admin-auth-context'
-import { COMMUNITY_NAME } from '@/lib/labels'
+import { SYSTEM_NAME } from '@/lib/labels'
 
-const navItems = [
+const communityNavItems = [
   { href: '/admin', label: '管理儀表板', icon: LayoutDashboard, exact: true },
   { href: '/admin/proposals', label: '提案管理', icon: FileText },
   { href: '/admin/results', label: '投票結果詳情', icon: BarChart3 },
@@ -24,8 +26,22 @@ const navItems = [
 
 export function AdminShell() {
   const pathname = useLocation().pathname
-  const { community, logout } = useAdminAuth()
-  const name = community?.name ?? COMMUNITY_NAME
+  const { me, community, isSuperAdmin, logout } = useAdminAuth()
+
+  // 超級管理員尚未選擇社區時，先導向系統管理頁
+  if (isSuperAdmin && !community && pathname !== '/admin/system') {
+    return <Navigate to="/admin/system" replace />
+  }
+
+  const navItems = [
+    ...(community ? communityNavItems : []),
+    ...(isSuperAdmin
+      ? [{ href: '/admin/system', label: '系統管理', icon: Settings, exact: true }]
+      : []),
+  ]
+
+  const headerName = community?.name ?? SYSTEM_NAME
+  const adminName = me?.displayName || me?.username || '管理員'
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -44,10 +60,21 @@ export function AdminShell() {
             <Building2 className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold">{name}</p>
+            <p className="truncate text-sm font-bold">{headerName}</p>
             <p className="text-xs opacity-60">後台管理系統</p>
           </div>
         </div>
+
+        {isSuperAdmin && community && (
+          <Link
+            to="/admin/system"
+            className="mx-3 mt-3 flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs opacity-70 hover:opacity-100"
+            style={{ borderColor: 'var(--sidebar-border)' }}
+          >
+            <ArrowLeftRight className="size-3.5" aria-hidden="true" />
+            切換社區 / 系統管理
+          </Link>
+        )}
 
         <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="後台導覽">
           {navItems.map((item) => {
@@ -76,12 +103,13 @@ export function AdminShell() {
               className="flex size-8 items-center justify-center rounded-full text-xs font-bold"
               style={{ background: 'var(--sidebar-accent)' }}
             >
-              管
+              {adminName.slice(0, 1)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">管理員</p>
+              <p className="truncate text-sm font-medium">{adminName}</p>
               <p className="flex items-center gap-1 text-xs opacity-60">
-                <ShieldCheck className="size-3" aria-hidden="true" /> 後台帳號
+                <ShieldCheck className="size-3" aria-hidden="true" />
+                {isSuperAdmin ? '超級管理員' : '社區管理員'}
               </p>
             </div>
           </div>
@@ -108,7 +136,7 @@ export function AdminShell() {
         >
           <div className="flex items-center gap-2">
             <Building2 className="size-5" aria-hidden="true" />
-            <span className="text-sm font-bold">後台管理</span>
+            <span className="text-sm font-bold">{headerName}</span>
           </div>
           <Link to="/" className="text-xs opacity-70">
             住戶端

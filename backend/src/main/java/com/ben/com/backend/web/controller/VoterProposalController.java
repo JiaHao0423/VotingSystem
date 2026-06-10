@@ -44,7 +44,7 @@ public class VoterProposalController {
 	@GetMapping("/{proposalId}")
 	public ProposalResponse get(@PathVariable Long proposalId) {
 		var voter = voterAuthService.getCurrentPrincipal();
-		return proposalService.getForVoter(proposalId, voter.ownerId());
+		return proposalService.getForVoter(voter.communityId(), proposalId, voter.ownerId());
 	}
 
 	@PostMapping("/{proposalId}/votes")

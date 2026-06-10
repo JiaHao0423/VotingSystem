@@ -34,8 +34,8 @@ public class UnitOptionsService {
 		this.communityService = communityService;
 	}
 
-	public UnitOptionsResponse getOptions() {
-		var community = communityService.getDefaultCommunity();
+	public UnitOptionsResponse getOptions(Long communityId) {
+		var community = communityService.getById(communityId);
 		var units = unitRepository.findByCommunityIdOrderByBuildingTypeAscFloorAscUnitNoAscShopNoAsc(community.getId());
 		var assignedUnitIds = new HashSet<>(
 				ownerRepository.findByCommunityIdWithUnit(community.getId()).stream()

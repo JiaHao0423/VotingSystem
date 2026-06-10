@@ -2,7 +2,7 @@ package com.ben.com.backend.web.controller;
 
 import com.ben.com.backend.service.CommunityService;
 import com.ben.com.backend.service.MeetingService;
-import com.ben.com.backend.web.dto.CommunityResponse;
+import com.ben.com.backend.web.dto.CommunitySummaryResponse;
 import com.ben.com.backend.web.dto.MeetingResponse;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,9 +22,12 @@ public class CommunityController {
 		this.meetingService = meetingService;
 	}
 
-	@GetMapping("/community")
-	public CommunityResponse getDefaultCommunity() {
-		return CommunityResponse.from(communityService.getDefaultCommunity());
+	/** 公開的社區清單（僅基本資訊），供住戶登入時選擇社區 */
+	@GetMapping("/communities")
+	public List<CommunitySummaryResponse> listCommunities() {
+		return communityService.list().stream()
+				.map(CommunitySummaryResponse::from)
+				.toList();
 	}
 
 	@GetMapping("/communities/{communityId}/meetings")

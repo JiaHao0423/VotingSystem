@@ -8,6 +8,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -31,13 +32,15 @@ public class SecurityConfig {
 
 	@Bean
 	@Order(1)
-	SecurityFilterChain adminSecurityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain adminSecurityFilterChain(HttpSecurity http) {
 		http
 				.securityMatcher("/api/admin/**")
 				.cors(Customizer.withDefaults())
-				.csrf(csrf -> csrf.disable())
+				.csrf(CsrfConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth.anyRequest().hasRole("ADMIN"))
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/api/admin/system/**").hasRole("SUPER_ADMIN")
+						.anyRequest().hasRole("ADMIN"))
 				.httpBasic(Customizer.withDefaults());
 
 		return http.build();
@@ -48,17 +51,17 @@ public class SecurityConfig {
 	SecurityFilterChain voterSecurityFilterChain(
 			HttpSecurity http,
 			SecurityContextRepository securityContextRepository
-	) throws Exception {
+	) {
 		http
 				.cors(Customizer.withDefaults())
-				.csrf(csrf -> csrf.disable())
+				.csrf(CsrfConfigurer::disable)
 				.securityContext(context -> context
 						.securityContextRepository(securityContextRepository)
 						.requireExplicitSave(false)
 				)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers(HttpMethod.GET, "/api/community", "/api/units/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/communities", "/api/units/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/auth/qr/preview").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/auth/verify", "/api/auth/qr").permitAll()
 						.requestMatchers("/api/auth/me").hasRole("VOTER")

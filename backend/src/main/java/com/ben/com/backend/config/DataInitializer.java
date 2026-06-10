@@ -1,22 +1,29 @@
 package com.ben.com.backend.config;
 
+import com.ben.com.backend.domain.entity.AdminUser;
 import com.ben.com.backend.domain.entity.Community;
 import com.ben.com.backend.domain.entity.Meeting;
 import com.ben.com.backend.domain.entity.Unit;
+import com.ben.com.backend.domain.enums.AdminRole;
 import com.ben.com.backend.domain.enums.BuildingType;
 import com.ben.com.backend.domain.enums.MeetingStatus;
+import com.ben.com.backend.repository.AdminUserRepository;
 import com.ben.com.backend.repository.CommunityRepository;
 import com.ben.com.backend.repository.MeetingRepository;
 import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.util.UnitShortNameFormatter;
 import java.time.LocalDate;
 import java.util.List;
+import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+@NullMarked
 @Component
 public class DataInitializer implements CommandLineRunner {
 
@@ -38,20 +45,43 @@ public class DataInitializer implements CommandLineRunner {
 	private final CommunityRepository communityRepository;
 	private final MeetingRepository meetingRepository;
 	private final UnitRepository unitRepository;
+	private final AdminUserRepository adminUserRepository;
+	private final PasswordEncoder passwordEncoder;
+	private final String defaultAdminUsername;
+	private final String defaultAdminPassword;
 
 	public DataInitializer(
 			CommunityRepository communityRepository,
 			MeetingRepository meetingRepository,
-			UnitRepository unitRepository
+			UnitRepository unitRepository,
+			AdminUserRepository adminUserRepository,
+			PasswordEncoder passwordEncoder,
+			@Value("${spring.security.user.name:admin}") String defaultAdminUsername,
+			@Value("${spring.security.user.password:admin}") String defaultAdminPassword
 	) {
 		this.communityRepository = communityRepository;
 		this.meetingRepository = meetingRepository;
 		this.unitRepository = unitRepository;
+		this.adminUserRepository = adminUserRepository;
+		this.passwordEncoder = passwordEncoder;
+		this.defaultAdminUsername = defaultAdminUsername;
+		this.defaultAdminPassword = defaultAdminPassword;
 	}
 
 	@Override
 	@Transactional
 	public void run(String... args) {
+		if (adminUserRepository.count() == 0) {
+			adminUserRepository.save(new AdminUser(
+					defaultAdminUsername,
+					passwordEncoder.encode(defaultAdminPassword),
+					"系統管理員",
+					AdminRole.SUPER_ADMIN,
+					null
+			));
+			log.info("初始化超級管理員帳號：{}", defaultAdminUsername);
+		}
+
 		var community = communityRepository.findByName(COMMUNITY_NAME).orElseGet(() -> {
 			var created = new Community(
 					COMMUNITY_NAME,

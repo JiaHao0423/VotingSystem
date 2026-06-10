@@ -11,6 +11,10 @@ import com.ben.com.backend.web.dto.UnitResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,6 +30,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+@NullMarked
 @RestController
 @RequestMapping("/api/admin/communities/{communityId}/units")
 public class AdminUnitController {
@@ -47,7 +52,7 @@ public class AdminUnitController {
 	@GetMapping
 	public List<UnitResponse> list(
 			@PathVariable Long communityId,
-			@RequestParam(required = false) BuildingType buildingType,
+			@RequestParam(required = false) @Nullable BuildingType buildingType,
 			@RequestParam(defaultValue = "false") boolean unassignedOnly
 	) {
 		return unitService.list(communityId, buildingType, unassignedOnly);
@@ -55,7 +60,7 @@ public class AdminUnitController {
 
 	@GetMapping("/{unitId}")
 	public UnitResponse get(@PathVariable Long communityId, @PathVariable Long unitId) {
-		return unitService.getById(unitId);
+		return unitService.getById(communityId, unitId);
 	}
 
 	@PostMapping
@@ -67,17 +72,18 @@ public class AdminUnitController {
 	@DeleteMapping("/{unitId}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void delete(@PathVariable Long communityId, @PathVariable Long unitId) {
-		unitService.delete(unitId);
+		unitService.delete(communityId, unitId);
 	}
 
 	@GetMapping("/import/template")
-	public ResponseEntity<byte[]> downloadImportTemplate() throws IOException {
+	public ResponseEntity<Resource> downloadImportTemplate() throws IOException {
 		var bytes = templateService.buildTemplate();
 		return ResponseEntity.ok()
 				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"unit-import-template.xlsx\"")
 				.contentType(MediaType.parseMediaType(
 						"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-				.body(bytes);
+				.contentLength(bytes.length)
+				.body(new ByteArrayResource(bytes));
 	}
 
 	@PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
