@@ -4,10 +4,12 @@ import com.ben.com.backend.domain.entity.Proposal;
 import com.ben.com.backend.domain.enums.ProposalStatus;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+@NullMarked
 public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 
 	@Query("""
@@ -38,4 +40,6 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 			@Param("communityId") Long communityId,
 			@Param("statuses") List<ProposalStatus> statuses
 	);
+
+	void deleteByMeeting_Community_Id(Long communityId);
 }

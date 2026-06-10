@@ -30,4 +30,6 @@ public interface AdminUserRepository extends JpaRepository<AdminUser, Long> {
 			WHERE a.username = :username
 			""")
 	Optional<AdminUser> findByUsernameWithCommunity(String username);
+
+	void deleteByCommunity_Id(Long communityId);
 }

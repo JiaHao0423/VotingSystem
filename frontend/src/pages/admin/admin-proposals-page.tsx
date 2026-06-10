@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Play, Square, BarChart3 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Play, Square, BarChart3, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -49,7 +49,7 @@ export function AdminProposalsPage() {
   }
 
   async function remove(id: number) {
-    if (!community || !confirm('確定刪除此提案？')) return
+    if (!community || !confirm('確定刪除此提案？若已有投票紀錄將一併刪除，且無法復原。')) return
     try {
       await adminApi.deleteProposal(community.id, id)
       toast.success('提案已刪除')
@@ -60,7 +60,7 @@ export function AdminProposalsPage() {
   }
 
   function ProposalActions({ p }: { p: AdminProposal }) {
-    const editable = p.status === 'DRAFT' || p.status === 'SCHEDULED'
+    const startable = p.status === 'DRAFT' || p.status === 'SCHEDULED'
     return (
       <div className="flex items-center justify-end gap-1">
         {p.status === 'ACTIVE' ? (
@@ -69,36 +69,37 @@ export function AdminProposalsPage() {
             終止
           </Button>
         ) : (
-          editable && (
+          startable && (
             <Button variant="outline" size="sm" onClick={() => start(p.id)}>
               <Play className="size-3.5" aria-hidden="true" />
               啟動
             </Button>
           )
         )}
+        <Link to={`/admin/proposals/${p.id}`}>
+          <Button variant="ghost" size="sm" aria-label="檢視詳情">
+            <Eye className="size-4" aria-hidden="true" />
+          </Button>
+        </Link>
         <Link to={`/admin/results/${p.id}`}>
           <Button variant="ghost" size="sm" aria-label="查看結果">
             <BarChart3 className="size-4" aria-hidden="true" />
           </Button>
         </Link>
-        {editable && (
-          <>
-            <Link to={`/admin/proposals/${p.id}/edit`}>
-              <Button variant="ghost" size="sm" aria-label="編輯">
-                <Pencil className="size-4" aria-hidden="true" />
-              </Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => remove(p.id)}
-              className="text-destructive hover:text-destructive"
-              aria-label="刪除"
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-            </Button>
-          </>
-        )}
+        <Link to={`/admin/proposals/${p.id}/edit`}>
+          <Button variant="ghost" size="sm" aria-label="編輯">
+            <Pencil className="size-4" aria-hidden="true" />
+          </Button>
+        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => remove(p.id)}
+          className="text-destructive hover:text-destructive"
+          aria-label="刪除"
+        >
+          <Trash2 className="size-4" aria-hidden="true" />
+        </Button>
       </div>
     )
   }

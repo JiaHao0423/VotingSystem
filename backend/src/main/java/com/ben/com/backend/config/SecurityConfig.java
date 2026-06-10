@@ -1,16 +1,20 @@
 package com.ben.com.backend.config;
 
+import jakarta.servlet.http.HttpServletResponse;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -41,7 +45,8 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/admin/system/**").hasRole("SUPER_ADMIN")
 						.anyRequest().hasRole("ADMIN"))
-				.httpBasic(Customizer.withDefaults());
+				// 不回傳 WWW-Authenticate 標頭，避免瀏覽器跳出原生 Basic Auth 登入視窗
+				.httpBasic(basic -> basic.authenticationEntryPoint(restAuthenticationEntryPoint()));
 
 		return http.build();
 	}
@@ -71,6 +76,16 @@ public class SecurityConfig {
 				);
 
 		return http.build();
+	}
+
+	private AuthenticationEntryPoint restAuthenticationEntryPoint() {
+		return (request, response, authException) -> {
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+			response.setCharacterEncoding("UTF-8");
+			response.getWriter().write(
+					"{\"timestamp\":\"" + Instant.now() + "\",\"status\":401,\"error\":\"帳號或密碼錯誤\"}");
+		};
 	}
 
 	@Bean

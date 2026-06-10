@@ -3,10 +3,12 @@ package com.ben.com.backend.repository;
 import com.ben.com.backend.domain.entity.Owner;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+@NullMarked
 public interface OwnerRepository extends JpaRepository<Owner, Long> {
 
 	@Query("""
@@ -26,8 +28,6 @@ public interface OwnerRepository extends JpaRepository<Owner, Long> {
 			""")
 	Optional<Owner> findByIdWithUnit(@Param("id") Long id);
 
-	Optional<Owner> findByQrToken(String qrToken);
-
 	@Query("""
 			SELECT o FROM Owner o
 			JOIN FETCH o.unit u
@@ -37,6 +37,8 @@ public interface OwnerRepository extends JpaRepository<Owner, Long> {
 	Optional<Owner> findByQrTokenWithUnit(@Param("token") String token);
 
 	boolean existsByUnitId(Long unitId);
+
+	void deleteByUnit_Community_Id(Long communityId);
 
 	@Query("""
 			SELECT o FROM Owner o

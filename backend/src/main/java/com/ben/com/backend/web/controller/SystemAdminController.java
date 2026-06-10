@@ -6,6 +6,8 @@ import com.ben.com.backend.web.dto.CommunityResponse;
 import com.ben.com.backend.web.dto.CreateAdminAccountRequest;
 import com.ben.com.backend.web.dto.CreateCommunityRequest;
 import com.ben.com.backend.web.dto.ResetAdminPasswordRequest;
+import com.ben.com.backend.web.dto.UpdateAdminAccountRequest;
+import com.ben.com.backend.web.dto.UpdateCommunityRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -41,6 +43,20 @@ public class SystemAdminController {
 		return adminAccountService.createCommunity(request);
 	}
 
+	@PutMapping("/communities/{communityId}")
+	public CommunityResponse updateCommunity(
+			@PathVariable Long communityId,
+			@Valid @RequestBody UpdateCommunityRequest request
+	) {
+		return adminAccountService.updateCommunity(communityId, request);
+	}
+
+	@DeleteMapping("/communities/{communityId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void deleteCommunity(@PathVariable Long communityId) {
+		adminAccountService.deleteCommunity(communityId);
+	}
+
 	@GetMapping("/admins")
 	public List<AdminAccountResponse> listAdmins() {
 		return adminAccountService.listAccounts();
@@ -50,6 +66,14 @@ public class SystemAdminController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public AdminAccountResponse createAdmin(@Valid @RequestBody CreateAdminAccountRequest request) {
 		return adminAccountService.createAccount(request);
+	}
+
+	@PutMapping("/admins/{adminId}")
+	public AdminAccountResponse updateAdmin(
+			@PathVariable Long adminId,
+			@Valid @RequestBody UpdateAdminAccountRequest request
+	) {
+		return adminAccountService.updateAccount(adminId, request);
 	}
 
 	@DeleteMapping("/admins/{adminId}")

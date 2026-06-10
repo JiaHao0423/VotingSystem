@@ -37,11 +37,24 @@ export interface CreateCommunityBody {
   meetingName?: string
 }
 
+export interface UpdateCommunityBody {
+  name: string
+  totalHouseholds: number
+  totalArea?: number | null
+  address?: string
+}
+
 export interface CreateAdminAccountBody {
   username: string
   password: string
   displayName?: string
   role: AdminRole
+  communityId?: number | null
+}
+
+export interface UpdateAdminAccountBody {
+  username: string
+  displayName?: string
   communityId?: number | null
 }
 

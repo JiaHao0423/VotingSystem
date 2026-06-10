@@ -11,6 +11,8 @@ import type {
   CreateAdminAccountBody,
   CreateCommunityBody,
   CreateProposalBody,
+  UpdateAdminAccountBody,
+  UpdateCommunityBody,
   OwnerCreated,
   OwnerQrPrintItem,
   QrCodeInfo,
@@ -92,6 +94,19 @@ export const adminApi = {
     }).then((r) => handleResponse<Community>(r))
   },
 
+  updateCommunity(communityId: number, body: UpdateCommunityBody): Promise<Community> {
+    return adminFetch(`/api/admin/system/communities/${communityId}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }).then((r) => handleResponse<Community>(r))
+  },
+
+  deleteCommunity(communityId: number): Promise<void> {
+    return adminFetch(`/api/admin/system/communities/${communityId}`, {
+      method: 'DELETE',
+    }).then((r) => handleResponse<void>(r))
+  },
+
   listAdminAccounts(): Promise<AdminAccount[]> {
     return adminFetch('/api/admin/system/admins').then((r) =>
       handleResponse<AdminAccount[]>(r),
@@ -101,6 +116,13 @@ export const adminApi = {
   createAdminAccount(body: CreateAdminAccountBody): Promise<AdminAccount> {
     return adminFetch('/api/admin/system/admins', {
       method: 'POST',
+      body: JSON.stringify(body),
+    }).then((r) => handleResponse<AdminAccount>(r))
+  },
+
+  updateAdminAccount(adminId: number, body: UpdateAdminAccountBody): Promise<AdminAccount> {
+    return adminFetch(`/api/admin/system/admins/${adminId}`, {
+      method: 'PUT',
       body: JSON.stringify(body),
     }).then((r) => handleResponse<AdminAccount>(r))
   },

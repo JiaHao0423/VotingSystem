@@ -4,11 +4,15 @@ import com.ben.com.backend.domain.entity.Unit;
 import com.ben.com.backend.domain.enums.BuildingType;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+@NullMarked
 public interface UnitRepository extends JpaRepository<Unit, Long> {
+
+	void deleteByCommunityId(Long communityId);
 
 	List<Unit> findByCommunityIdOrderByBuildingTypeAscFloorAscUnitNoAscShopNoAsc(Long communityId);
 
@@ -25,6 +29,4 @@ public interface UnitRepository extends JpaRepository<Unit, Long> {
 			ORDER BY u.buildingType, u.floor, u.unitNo, u.shopNo
 			""")
 	List<Unit> findUnassignedByCommunityId(@Param("communityId") Long communityId);
-
-	long countByCommunityId(Long communityId);
 }

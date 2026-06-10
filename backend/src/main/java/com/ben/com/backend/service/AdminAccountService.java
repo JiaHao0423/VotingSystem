@@ -12,11 +12,17 @@ import com.ben.com.backend.exception.UnauthorizedException;
 import com.ben.com.backend.repository.AdminUserRepository;
 import com.ben.com.backend.repository.CommunityRepository;
 import com.ben.com.backend.repository.MeetingRepository;
+import com.ben.com.backend.repository.OwnerRepository;
+import com.ben.com.backend.repository.ProposalRepository;
+import com.ben.com.backend.repository.UnitRepository;
+import com.ben.com.backend.repository.VoteRecordRepository;
 import com.ben.com.backend.web.dto.AdminAccountResponse;
 import com.ben.com.backend.web.dto.AdminMeResponse;
 import com.ben.com.backend.web.dto.CommunityResponse;
 import com.ben.com.backend.web.dto.CreateAdminAccountRequest;
 import com.ben.com.backend.web.dto.CreateCommunityRequest;
+import com.ben.com.backend.web.dto.UpdateAdminAccountRequest;
+import com.ben.com.backend.web.dto.UpdateCommunityRequest;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,17 +37,29 @@ public class AdminAccountService {
 	private final AdminUserRepository adminUserRepository;
 	private final CommunityRepository communityRepository;
 	private final MeetingRepository meetingRepository;
+	private final UnitRepository unitRepository;
+	private final OwnerRepository ownerRepository;
+	private final ProposalRepository proposalRepository;
+	private final VoteRecordRepository voteRecordRepository;
 	private final PasswordEncoder passwordEncoder;
 
 	public AdminAccountService(
 			AdminUserRepository adminUserRepository,
 			CommunityRepository communityRepository,
 			MeetingRepository meetingRepository,
+			UnitRepository unitRepository,
+			OwnerRepository ownerRepository,
+			ProposalRepository proposalRepository,
+			VoteRecordRepository voteRecordRepository,
 			PasswordEncoder passwordEncoder
 	) {
 		this.adminUserRepository = adminUserRepository;
 		this.communityRepository = communityRepository;
 		this.meetingRepository = meetingRepository;
+		this.unitRepository = unitRepository;
+		this.ownerRepository = ownerRepository;
+		this.proposalRepository = proposalRepository;
+		this.voteRecordRepository = voteRecordRepository;
 		this.passwordEncoder = passwordEncoder;
 	}
 
@@ -104,6 +122,39 @@ public class AdminAccountService {
 		return CommunityResponse.from(community);
 	}
 
+	public CommunityResponse updateCommunity(Long id, UpdateCommunityRequest request) {
+		var community = communityRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("找不到社區：" + id));
+
+		var name = request.getName().trim();
+		var duplicated = communityRepository.findByName(name)
+				.filter(other -> !other.getId().equals(id))
+				.isPresent();
+		if (duplicated) {
+			throw new ConflictException("社區名稱已存在：" + name);
+		}
+
+		community.setName(name);
+		community.setTotalHouseholds(request.getTotalHouseholds());
+		community.setTotalArea(request.getTotalArea());
+		community.setAddress(request.getAddress());
+		return CommunityResponse.from(community);
+	}
+
+	/** 刪除社區及其所有資料（投票紀錄、所有權人、戶別、提案、會議、社區管理帳號） */
+	public void deleteCommunity(Long id) {
+		if (!communityRepository.existsById(id)) {
+			throw new ResourceNotFoundException("找不到社區：" + id);
+		}
+		voteRecordRepository.deleteByOwner_Unit_Community_Id(id);
+		ownerRepository.deleteByUnit_Community_Id(id);
+		proposalRepository.deleteByMeeting_Community_Id(id);
+		unitRepository.deleteByCommunityId(id);
+		meetingRepository.deleteByCommunityId(id);
+		adminUserRepository.deleteByCommunity_Id(id);
+		communityRepository.deleteById(id);
+	}
+
 	@Transactional(readOnly = true)
 	public List<AdminAccountResponse> listAccounts() {
 		return adminUserRepository.findAllWithCommunity().stream()
@@ -136,6 +187,35 @@ public class AdminAccountService {
 				community
 		);
 		adminUserRepository.save(admin);
+		return AdminAccountResponse.from(admin);
+	}
+
+	public AdminAccountResponse updateAccount(Long id, UpdateAdminAccountRequest request) {
+		var admin = adminUserRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("找不到管理員帳號：" + id));
+
+		var username = request.getUsername().trim();
+		if (!username.equals(admin.getUsername()) && adminUserRepository.existsByUsername(username)) {
+			throw new ConflictException("帳號已存在：" + username);
+		}
+		admin.setUsername(username);
+		admin.setDisplayName(
+				request.getDisplayName() != null && !request.getDisplayName().isBlank()
+						? request.getDisplayName().trim()
+						: null
+		);
+
+		if (admin.getRole() == AdminRole.COMMUNITY_ADMIN) {
+			if (request.getCommunityId() == null) {
+				throw new IllegalArgumentException("社區管理員必須指定社區");
+			}
+			if (admin.getCommunity() == null
+					|| !admin.getCommunity().getId().equals(request.getCommunityId())) {
+				var community = communityRepository.findById(request.getCommunityId())
+						.orElseThrow(() -> new ResourceNotFoundException("找不到社區：" + request.getCommunityId()));
+				admin.setCommunity(community);
+			}
+		}
 		return AdminAccountResponse.from(admin);
 	}
 

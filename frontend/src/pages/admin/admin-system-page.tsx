@@ -6,6 +6,7 @@ import {
   KeyRound,
   Loader2,
   LogIn,
+  Pencil,
   Plus,
   ShieldCheck,
   Trash2,
@@ -34,28 +35,24 @@ import { adminApi } from '@/lib/admin-api'
 import { useAdminAuth } from '@/context/admin-auth-context'
 import type { AdminAccount, Community } from '@/lib/admin-types'
 
+const EMPTY_COMMUNITY_FORM = { name: '', totalHouseholds: '', address: '' }
+const EMPTY_ACCOUNT_FORM = { username: '', password: '', displayName: '', communityId: '' }
+
 export function AdminSystemPage() {
   const navigate = useNavigate()
-  const { me, selectCommunity } = useAdminAuth()
+  const { me, community: activeCommunity, selectCommunity } = useAdminAuth()
   const [communities, setCommunities] = useState<Community[]>([])
   const [accounts, setAccounts] = useState<AdminAccount[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [communityForm, setCommunityForm] = useState({
-    name: '',
-    totalHouseholds: '',
-    address: '',
-  })
-  const [creatingCommunity, setCreatingCommunity] = useState(false)
+  const [communityForm, setCommunityForm] = useState(EMPTY_COMMUNITY_FORM)
+  const [editingCommunity, setEditingCommunity] = useState<Community | null>(null)
+  const [savingCommunity, setSavingCommunity] = useState(false)
   const [showCommunityForm, setShowCommunityForm] = useState(false)
 
-  const [accountForm, setAccountForm] = useState({
-    username: '',
-    password: '',
-    displayName: '',
-    communityId: '',
-  })
-  const [creatingAccount, setCreatingAccount] = useState(false)
+  const [accountForm, setAccountForm] = useState(EMPTY_ACCOUNT_FORM)
+  const [editingAccount, setEditingAccount] = useState<AdminAccount | null>(null)
+  const [savingAccount, setSavingAccount] = useState(false)
   const [showAccountForm, setShowAccountForm] = useState(false)
 
   const reload = useCallback(async () => {
@@ -78,7 +75,25 @@ export function AdminSystemPage() {
     navigate('/admin')
   }
 
-  async function createCommunity(e: React.FormEvent) {
+  // ---- 社區管理 ----
+
+  function openCreateCommunity() {
+    setEditingCommunity(null)
+    setCommunityForm(EMPTY_COMMUNITY_FORM)
+    setShowCommunityForm(true)
+  }
+
+  function openEditCommunity(c: Community) {
+    setEditingCommunity(c)
+    setCommunityForm({
+      name: c.name,
+      totalHouseholds: String(c.totalHouseholds),
+      address: c.address ?? '',
+    })
+    setShowCommunityForm(true)
+  }
+
+  async function submitCommunity(e: React.FormEvent) {
     e.preventDefault()
     const households = Number(communityForm.totalHouseholds)
     if (!communityForm.name.trim()) {
@@ -89,47 +104,108 @@ export function AdminSystemPage() {
       toast.error('總戶數必須為正整數')
       return
     }
-    setCreatingCommunity(true)
+    setSavingCommunity(true)
     try {
-      await adminApi.createCommunity({
+      const body = {
         name: communityForm.name.trim(),
         totalHouseholds: households,
         address: communityForm.address.trim() || undefined,
-      })
-      toast.success('社區已建立')
-      setCommunityForm({ name: '', totalHouseholds: '', address: '' })
+      }
+      if (editingCommunity) {
+        const updated = await adminApi.updateCommunity(editingCommunity.id, body)
+        if (activeCommunity?.id === updated.id) {
+          selectCommunity(updated)
+        }
+        toast.success('社區資料已更新')
+      } else {
+        await adminApi.createCommunity(body)
+        toast.success('社區已建立')
+      }
+      setCommunityForm(EMPTY_COMMUNITY_FORM)
+      setEditingCommunity(null)
       setShowCommunityForm(false)
       await reload()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '建立失敗')
+      toast.error(err instanceof Error ? err.message : '儲存失敗')
     } finally {
-      setCreatingCommunity(false)
+      setSavingCommunity(false)
     }
   }
 
-  async function createAccount(e: React.FormEvent) {
+  async function removeCommunity(c: Community) {
+    const input = window.prompt(
+      `警告：刪除社區將一併刪除其所有戶別、所有權人、提案、投票紀錄與管理帳號，且無法復原！\n\n如確定刪除，請輸入社區名稱「${c.name}」：`,
+    )
+    if (input === null) return
+    if (input.trim() !== c.name) {
+      toast.error('輸入的社區名稱不符，已取消刪除')
+      return
+    }
+    try {
+      await adminApi.deleteCommunity(c.id)
+      if (activeCommunity?.id === c.id) {
+        selectCommunity(null)
+      }
+      toast.success(`社區「${c.name}」已刪除`)
+      await reload()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '刪除失敗')
+    }
+  }
+
+  // ---- 管理帳號 ----
+
+  function openCreateAccount() {
+    setEditingAccount(null)
+    setAccountForm(EMPTY_ACCOUNT_FORM)
+    setShowAccountForm(true)
+  }
+
+  function openEditAccount(account: AdminAccount) {
+    setEditingAccount(account)
+    setAccountForm({
+      username: account.username,
+      password: '',
+      displayName: account.displayName ?? '',
+      communityId: account.communityId != null ? String(account.communityId) : '',
+    })
+    setShowAccountForm(true)
+  }
+
+  async function submitAccount(e: React.FormEvent) {
     e.preventDefault()
-    if (!accountForm.communityId) {
+    const isCommunityAdmin = !editingAccount || editingAccount.role === 'COMMUNITY_ADMIN'
+    if (isCommunityAdmin && !accountForm.communityId) {
       toast.error('請選擇管理的社區')
       return
     }
-    setCreatingAccount(true)
+    setSavingAccount(true)
     try {
-      await adminApi.createAdminAccount({
-        username: accountForm.username.trim(),
-        password: accountForm.password,
-        displayName: accountForm.displayName.trim() || undefined,
-        role: 'COMMUNITY_ADMIN',
-        communityId: Number(accountForm.communityId),
-      })
-      toast.success('管理帳號已建立')
-      setAccountForm({ username: '', password: '', displayName: '', communityId: '' })
+      if (editingAccount) {
+        await adminApi.updateAdminAccount(editingAccount.id, {
+          username: accountForm.username.trim(),
+          displayName: accountForm.displayName.trim() || undefined,
+          communityId: accountForm.communityId ? Number(accountForm.communityId) : null,
+        })
+        toast.success('帳號資料已更新')
+      } else {
+        await adminApi.createAdminAccount({
+          username: accountForm.username.trim(),
+          password: accountForm.password,
+          displayName: accountForm.displayName.trim() || undefined,
+          role: 'COMMUNITY_ADMIN',
+          communityId: Number(accountForm.communityId),
+        })
+        toast.success('管理帳號已建立')
+      }
+      setAccountForm(EMPTY_ACCOUNT_FORM)
+      setEditingAccount(null)
       setShowAccountForm(false)
       await reload()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '建立失敗')
+      toast.error(err instanceof Error ? err.message : '儲存失敗')
     } finally {
-      setCreatingAccount(false)
+      setSavingAccount(false)
     }
   }
 
@@ -169,6 +245,8 @@ export function AdminSystemPage() {
     )
   }
 
+  const editingCommunityAdmin = !editingAccount || editingAccount.role === 'COMMUNITY_ADMIN'
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -187,7 +265,7 @@ export function AdminSystemPage() {
             </CardTitle>
             <CardDescription>共 {communities.length} 個社區</CardDescription>
           </div>
-          <Button size="sm" onClick={() => setShowCommunityForm((v) => !v)}>
+          <Button size="sm" onClick={openCreateCommunity}>
             <Plus className="size-4" aria-hidden="true" />
             新增社區
           </Button>
@@ -195,9 +273,12 @@ export function AdminSystemPage() {
         <CardContent className="flex flex-col gap-4">
           {showCommunityForm && (
             <form
-              onSubmit={createCommunity}
+              onSubmit={submitCommunity}
               className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2"
             >
+              <p className="text-sm font-medium sm:col-span-2">
+                {editingCommunity ? `編輯社區：${editingCommunity.name}` : '新增社區'}
+              </p>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="community-name">社區名稱 *</Label>
                 <Input
@@ -229,12 +310,23 @@ export function AdminSystemPage() {
                   placeholder="社區地址（選填）"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <Button type="submit" disabled={creatingCommunity}>
-                  {creatingCommunity && (
+              <div className="flex gap-2 sm:col-span-2">
+                <Button type="submit" disabled={savingCommunity}>
+                  {savingCommunity && (
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   )}
-                  建立社區
+                  {editingCommunity ? '儲存變更' : '建立社區'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowCommunityForm(false)
+                    setEditingCommunity(null)
+                    setCommunityForm(EMPTY_COMMUNITY_FORM)
+                  }}
+                >
+                  取消
                 </Button>
               </div>
             </form>
@@ -256,10 +348,25 @@ export function AdminSystemPage() {
                   <TableCell>{c.totalHouseholds}</TableCell>
                   <TableCell className="text-muted-foreground">{c.address || '—'}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => enterCommunity(c)}>
-                      <LogIn className="size-3.5" aria-hidden="true" />
-                      管理此社區
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button variant="outline" size="sm" onClick={() => enterCommunity(c)}>
+                        <LogIn className="size-3.5" aria-hidden="true" />
+                        管理此社區
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEditCommunity(c)}>
+                        <Pencil className="size-3.5" aria-hidden="true" />
+                        編輯
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => removeCommunity(c)}
+                      >
+                        <Trash2 className="size-3.5" aria-hidden="true" />
+                        刪除
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -286,7 +393,7 @@ export function AdminSystemPage() {
               每個社區可建立專屬管理帳號，登入後僅能管理自己的社區。
             </CardDescription>
           </div>
-          <Button size="sm" onClick={() => setShowAccountForm((v) => !v)}>
+          <Button size="sm" onClick={openCreateAccount}>
             <UserPlus className="size-4" aria-hidden="true" />
             新增帳號
           </Button>
@@ -294,9 +401,12 @@ export function AdminSystemPage() {
         <CardContent className="flex flex-col gap-4">
           {showAccountForm && (
             <form
-              onSubmit={createAccount}
+              onSubmit={submitAccount}
               className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2"
             >
+              <p className="text-sm font-medium sm:col-span-2">
+                {editingAccount ? `編輯帳號：${editingAccount.username}` : '新增帳號'}
+              </p>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="account-username">帳號 *</Label>
                 <Input
@@ -307,17 +417,19 @@ export function AdminSystemPage() {
                   autoComplete="off"
                 />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="account-password">密碼 *</Label>
-                <Input
-                  id="account-password"
-                  type="password"
-                  value={accountForm.password}
-                  onChange={(e) => setAccountForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="至少 6 字元"
-                  autoComplete="new-password"
-                />
-              </div>
+              {!editingAccount && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="account-password">密碼 *</Label>
+                  <Input
+                    id="account-password"
+                    type="password"
+                    value={accountForm.password}
+                    onChange={(e) => setAccountForm((f) => ({ ...f, password: e.target.value }))}
+                    placeholder="至少 6 字元"
+                    autoComplete="new-password"
+                  />
+                </div>
+              )}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="account-display-name">顯示名稱</Label>
                 <Input
@@ -329,30 +441,48 @@ export function AdminSystemPage() {
                   placeholder="例：王主委（選填）"
                 />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="account-community">管理的社區 *</Label>
-                <select
-                  id="account-community"
-                  value={accountForm.communityId}
-                  onChange={(e) =>
-                    setAccountForm((f) => ({ ...f, communityId: e.target.value }))
-                  }
-                  className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                >
-                  <option value="">請選擇社區</option>
-                  {communities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <Button type="submit" disabled={creatingAccount}>
-                  {creatingAccount && (
+              {editingCommunityAdmin && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="account-community">管理的社區 *</Label>
+                  <select
+                    id="account-community"
+                    value={accountForm.communityId}
+                    onChange={(e) =>
+                      setAccountForm((f) => ({ ...f, communityId: e.target.value }))
+                    }
+                    className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  >
+                    <option value="">請選擇社區</option>
+                    {communities.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {editingAccount && (
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  如需變更密碼，請使用列表中的「重設密碼」功能。
+                </p>
+              )}
+              <div className="flex gap-2 sm:col-span-2">
+                <Button type="submit" disabled={savingAccount}>
+                  {savingAccount && (
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   )}
-                  建立帳號
+                  {editingAccount ? '儲存變更' : '建立帳號'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowAccountForm(false)
+                    setEditingAccount(null)
+                    setAccountForm(EMPTY_ACCOUNT_FORM)
+                  }}
+                >
+                  取消
                 </Button>
               </div>
             </form>
@@ -389,6 +519,15 @@ export function AdminSystemPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditAccount(account)}
+                        title="編輯資料"
+                      >
+                        <Pencil className="size-3.5" aria-hidden="true" />
+                        編輯
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"

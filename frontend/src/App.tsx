@@ -14,6 +14,7 @@ import { AdminLoginPage } from '@/pages/admin/admin-login-page'
 import { AdminDashboardPage } from '@/pages/admin/admin-dashboard-page'
 import { AdminProposalsPage } from '@/pages/admin/admin-proposals-page'
 import { AdminProposalFormPage } from '@/pages/admin/admin-proposal-form-page'
+import { AdminProposalDetailPage } from '@/pages/admin/admin-proposal-detail-page'
 import { AdminResultsPage } from '@/pages/admin/admin-results-page'
 import { AdminResultDetailPage } from '@/pages/admin/admin-result-detail-page'
 import { AdminOwnersPage } from '@/pages/admin/admin-owners-page'
@@ -80,6 +81,7 @@ export function App() {
               <Route index element={<AdminDashboardPage />} />
               <Route path="proposals" element={<AdminProposalsPage />} />
               <Route path="proposals/new" element={<AdminProposalFormPage mode="new" />} />
+              <Route path="proposals/:id" element={<AdminProposalDetailPage />} />
               <Route path="proposals/:id/edit" element={<AdminProposalFormPage mode="edit" />} />
               <Route path="results" element={<AdminResultsPage />} />
               <Route path="results/:id" element={<AdminResultDetailPage />} />

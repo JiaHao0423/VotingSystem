@@ -12,7 +12,6 @@ import com.ben.com.backend.web.dto.ProposalResponse;
 import com.ben.com.backend.web.dto.ProposalResultResponse;
 import com.ben.com.backend.web.dto.UpdateProposalRequest;
 import com.ben.com.backend.web.dto.VoteRecordResponse;
-import java.util.EnumSet;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,8 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class ProposalService {
-
-	private static final EnumSet<ProposalStatus> EDITABLE = EnumSet.of(ProposalStatus.DRAFT, ProposalStatus.SCHEDULED);
 
 	private final ProposalRepository proposalRepository;
 	private final VoteRecordRepository voteRecordRepository;
@@ -87,7 +84,6 @@ public class ProposalService {
 
 	public ProposalResponse update(Long communityId, Long proposalId, UpdateProposalRequest request) {
 		var proposal = findProposalInCommunity(communityId, proposalId);
-		ensureEditable(proposal);
 		proposal.setProposalNumber(request.getProposalNumber());
 		proposal.setTitle(request.getTitle());
 		proposal.setContent(request.getContent());
@@ -98,10 +94,7 @@ public class ProposalService {
 
 	public void delete(Long communityId, Long proposalId) {
 		var proposal = findProposalInCommunity(communityId, proposalId);
-		ensureEditable(proposal);
-		if (voteRecordRepository.countByProposalId(proposalId) > 0) {
-			throw new ConflictException("已有投票紀錄的提案無法刪除");
-		}
+		voteRecordRepository.deleteByProposal_Id(proposalId);
 		proposalRepository.delete(proposal);
 	}
 
@@ -169,12 +162,6 @@ public class ProposalService {
 			throw new ResourceNotFoundException("找不到提案：" + id);
 		}
 		return proposal;
-	}
-
-	private void ensureEditable(Proposal proposal) {
-		if (!EDITABLE.contains(proposal.getStatus())) {
-			throw new ConflictException("投票開始後無法修改提案內容");
-		}
 	}
 
 	private void ensureVoterVisible(Proposal proposal) {
