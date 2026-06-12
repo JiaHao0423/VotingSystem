@@ -34,10 +34,12 @@ COPY --from=frontend-build /app/frontend/dist /usr/share/nginx/html
 # nginx 設定與啟動腳本
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+# 修正 Windows CRLF，避免 Linux 容器無法執行啟動腳本
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Zeabur 注入 PORT 給 nginx；後端固定在本機 8081
 ENV PORT=8080
+ENV HOST=0.0.0.0
 ENV BACKEND_PORT=8081
 EXPOSE 8080
 

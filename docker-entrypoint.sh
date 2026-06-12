@@ -2,6 +2,7 @@
 set -eu
 
 export PORT="${PORT:-8080}"
+export HOST="${HOST:-0.0.0.0}"
 export BACKEND_PORT="${BACKEND_PORT:-8081}"
 
 envsubst '${PORT} ${BACKEND_PORT}' \

@@ -1,5 +1,6 @@
 server {
-    listen ${PORT};
+    listen ${PORT} default_server;
+    listen [::]:${PORT} default_server;
     server_name _;
 
     # API 轉發到同容器內的 Spring Boot
