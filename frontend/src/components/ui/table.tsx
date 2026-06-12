@@ -3,8 +3,8 @@ import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from 'react'
 
 export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto">
-      <table className={cn('w-full caption-bottom text-sm', className)} {...props} />
+    <div className="-mx-px w-full overflow-x-auto overscroll-x-contain">
+      <table className={cn('w-full min-w-max caption-bottom text-sm', className)} {...props} />
     </div>
   )
 }

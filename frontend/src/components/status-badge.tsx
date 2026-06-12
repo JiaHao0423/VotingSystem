@@ -11,7 +11,7 @@ export function StatusBadge({ status }: { status: ProposalStatus }) {
     DRAFT: 'bg-secondary text-secondary-foreground border-border',
   }
   return (
-    <Badge className={cn('font-medium', styles[status])}>
+    <Badge className={cn('shrink-0 font-medium', styles[status])}>
       {status === 'ACTIVE' && (
         <span className="mr-1 inline-block size-1.5 animate-pulse rounded-full bg-chart-3" aria-hidden="true" />
       )}
@@ -24,7 +24,7 @@ export function TypeBadge({ type }: { type: ProposalType }) {
   return (
     <Badge
       className={cn(
-        'font-medium',
+        'shrink-0 font-medium',
         type === 'EXTRAORDINARY'
           ? 'border-chart-5/30 bg-chart-5/10 text-chart-5'
           : 'border-primary/20 bg-primary/5 text-primary',

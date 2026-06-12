@@ -62,7 +62,7 @@ export function AdminProposalsPage() {
   function ProposalActions({ p }: { p: AdminProposal }) {
     const startable = p.status === 'DRAFT' || p.status === 'SCHEDULED'
     return (
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
         {p.status === 'ACTIVE' ? (
           <Button variant="outline" size="sm" onClick={() => stop(p.id)}>
             <Square className="size-3.5" aria-hidden="true" />
@@ -132,7 +132,9 @@ export function AdminProposalsPage() {
                     <TableHead>類型</TableHead>
                     <TableHead>狀態</TableHead>
                     <TableHead>顯示</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
+                    <TableHead className="sticky right-0 bg-card text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
+                      操作
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -154,7 +156,7 @@ export function AdminProposalsPage() {
                       <TableCell className="text-sm text-muted-foreground">
                         {p.visible ? '是' : '否'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="sticky right-0 bg-card shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
                         <ProposalActions p={p} />
                       </TableCell>
                     </TableRow>

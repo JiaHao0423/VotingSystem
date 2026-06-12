@@ -55,12 +55,17 @@
   --sidebar-border: oklch(0.34 0.06 258);
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
-  font-family: var(--font-sans);
+    font-family: var(--font-sans), serif;
   background: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
 }
 
 @media print {

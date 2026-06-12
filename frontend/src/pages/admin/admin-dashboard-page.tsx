@@ -91,7 +91,7 @@ export function AdminDashboardPage() {
         </Link>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <Card key={s.label}>
             <CardContent className="pt-6">
@@ -108,7 +108,7 @@ export function AdminDashboardPage() {
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">進行中提案即時概況</CardTitle>
             <Link to="/admin/proposals" className="text-sm text-primary hover:underline">
               全部提案 →

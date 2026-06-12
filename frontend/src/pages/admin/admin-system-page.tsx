@@ -257,15 +257,15 @@ export function AdminSystemPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="size-4 text-primary" aria-hidden="true" />
+              <Building2 className="size-4 shrink-0 text-primary" aria-hidden="true" />
               社區管理
             </CardTitle>
             <CardDescription>共 {communities.length} 個社區</CardDescription>
           </div>
-          <Button size="sm" onClick={openCreateCommunity}>
+          <Button size="sm" className="w-full shrink-0 sm:w-auto" onClick={openCreateCommunity}>
             <Plus className="size-4" aria-hidden="true" />
             新增社區
           </Button>
@@ -332,68 +332,109 @@ export function AdminSystemPage() {
             </form>
           )}
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>社區名稱</TableHead>
-                <TableHead>總戶數</TableHead>
-                <TableHead>地址</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {communities.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell>{c.totalHouseholds}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.address || '—'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="outline" size="sm" onClick={() => enterCommunity(c)}>
-                        <LogIn className="size-3.5" aria-hidden="true" />
-                        管理此社區
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEditCommunity(c)}>
-                        <Pencil className="size-3.5" aria-hidden="true" />
-                        編輯
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => removeCommunity(c)}
-                      >
-                        <Trash2 className="size-3.5" aria-hidden="true" />
-                        刪除
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {communities.length === 0 && (
+          <div className="flex flex-col gap-3 md:hidden">
+            {communities.map((c) => (
+              <div key={c.id} className="rounded-lg border border-border p-4">
+                <p className="font-medium text-foreground">{c.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">總戶數 {c.totalHouseholds}</p>
+                {c.address && (
+                  <p className="mt-1 text-sm break-words text-muted-foreground">{c.address}</p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <Button variant="outline" size="sm" onClick={() => enterCommunity(c)}>
+                    <LogIn className="size-3.5" aria-hidden="true" />
+                    管理
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openEditCommunity(c)}>
+                    <Pencil className="size-3.5" aria-hidden="true" />
+                    編輯
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => removeCommunity(c)}
+                  >
+                    <Trash2 className="size-3.5" aria-hidden="true" />
+                    刪除
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {communities.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">尚未建立任何社區</p>
+            )}
+          </div>
+
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                    尚未建立任何社區
-                  </TableCell>
+                  <TableHead>社區名稱</TableHead>
+                  <TableHead>總戶數</TableHead>
+                  <TableHead>地址</TableHead>
+                  <TableHead className="sticky right-0 bg-card text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
+                    操作
+                  </TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {communities.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="max-w-[12rem] font-medium break-words">{c.name}</TableCell>
+                    <TableCell>{c.totalHouseholds}</TableCell>
+                    <TableCell className="max-w-xs break-words text-muted-foreground">
+                      {c.address || '—'}
+                    </TableCell>
+                    <TableCell className="sticky right-0 bg-card text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <Button variant="outline" size="sm" onClick={() => enterCommunity(c)}>
+                          <LogIn className="size-3.5" aria-hidden="true" />
+                          <span className="hidden lg:inline">管理此社區</span>
+                          <span className="lg:hidden">管理</span>
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEditCommunity(c)}>
+                          <Pencil className="size-3.5" aria-hidden="true" />
+                          編輯
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => removeCommunity(c)}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden="true" />
+                          刪除
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {communities.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                      尚未建立任何社區
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2 text-base">
-              <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
+              <ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
               管理帳號
             </CardTitle>
             <CardDescription>
               每個社區可建立專屬管理帳號，登入後僅能管理自己的社區。
             </CardDescription>
           </div>
-          <Button size="sm" onClick={openCreateAccount}>
+          <Button size="sm" className="w-full shrink-0 sm:w-auto" onClick={openCreateAccount}>
             <UserPlus className="size-4" aria-hidden="true" />
             新增帳號
           </Button>
@@ -488,73 +529,116 @@ export function AdminSystemPage() {
             </form>
           )}
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>帳號</TableHead>
-                <TableHead>顯示名稱</TableHead>
-                <TableHead>角色</TableHead>
-                <TableHead>所屬社區</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {accounts.map((account) => (
-                <TableRow key={account.id}>
-                  <TableCell className="font-medium">{account.username}</TableCell>
-                  <TableCell>{account.displayName || '—'}</TableCell>
-                  <TableCell>
-                    {account.role === 'SUPER_ADMIN' ? (
-                      <Badge className="border-primary/30 bg-primary/10 text-primary">
-                        超級管理員
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-secondary text-secondary-foreground">
-                        社區管理員
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {account.communityName || '全部社區'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditAccount(account)}
-                        title="編輯資料"
-                      >
-                        <Pencil className="size-3.5" aria-hidden="true" />
-                        編輯
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => resetPassword(account)}
-                        title="重設密碼"
-                      >
-                        <KeyRound className="size-3.5" aria-hidden="true" />
-                        重設密碼
-                      </Button>
-                      {account.id !== me?.id && (
+          <div className="flex flex-col gap-3 md:hidden">
+            {accounts.map((account) => (
+              <div key={account.id} className="rounded-lg border border-border p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-foreground">{account.username}</p>
+                  {account.role === 'SUPER_ADMIN' ? (
+                    <Badge className="border-primary/30 bg-primary/10 text-primary">超級管理員</Badge>
+                  ) : (
+                    <Badge className="bg-secondary text-secondary-foreground">社區管理員</Badge>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {account.displayName || '—'} · {account.communityName || '全部社區'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <Button variant="outline" size="sm" onClick={() => openEditAccount(account)}>
+                    <Pencil className="size-3.5" aria-hidden="true" />
+                    編輯
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => resetPassword(account)}>
+                    <KeyRound className="size-3.5" aria-hidden="true" />
+                    重設密碼
+                  </Button>
+                  {account.id !== me?.id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => removeAccount(account)}
+                    >
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                      刪除
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>帳號</TableHead>
+                  <TableHead>顯示名稱</TableHead>
+                  <TableHead>角色</TableHead>
+                  <TableHead>所屬社區</TableHead>
+                  <TableHead className="sticky right-0 bg-card text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
+                    操作
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {accounts.map((account) => (
+                  <TableRow key={account.id}>
+                    <TableCell className="font-medium">{account.username}</TableCell>
+                    <TableCell>{account.displayName || '—'}</TableCell>
+                    <TableCell>
+                      {account.role === 'SUPER_ADMIN' ? (
+                        <Badge className="border-primary/30 bg-primary/10 text-primary">
+                          超級管理員
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-secondary text-secondary-foreground">
+                          社區管理員
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[10rem] break-words text-muted-foreground">
+                      {account.communityName || '全部社區'}
+                    </TableCell>
+                    <TableCell className="sticky right-0 bg-card text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
+                      <div className="flex flex-wrap justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => removeAccount(account)}
-                          title="刪除帳號"
+                          onClick={() => openEditAccount(account)}
+                          title="編輯資料"
                         >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                          刪除
+                          <Pencil className="size-3.5" aria-hidden="true" />
+                          <span className="hidden xl:inline">編輯</span>
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => resetPassword(account)}
+                          title="重設密碼"
+                        >
+                          <KeyRound className="size-3.5" aria-hidden="true" />
+                          <span className="hidden xl:inline">重設密碼</span>
+                        </Button>
+                        {account.id !== me?.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => removeAccount(account)}
+                            title="刪除帳號"
+                          >
+                            <Trash2 className="size-3.5" aria-hidden="true" />
+                            <span className="hidden xl:inline">刪除</span>
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

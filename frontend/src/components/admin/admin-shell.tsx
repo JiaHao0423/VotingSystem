@@ -44,7 +44,7 @@ export function AdminShell() {
   const adminName = me?.displayName || me?.username || '管理員'
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen min-w-0 bg-background">
       <aside
         className="hidden w-64 shrink-0 flex-col md:flex"
         style={{ background: 'var(--sidebar)', color: 'var(--sidebar-foreground)' }}
@@ -129,21 +129,30 @@ export function AdminShell() {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         <div
-          className="flex items-center justify-between px-4 py-3 md:hidden"
+          className="flex items-center justify-between gap-2 px-4 py-3 md:hidden"
           style={{ background: 'var(--sidebar)', color: 'var(--sidebar-foreground)' }}
         >
-          <div className="flex items-center gap-2">
-            <Building2 className="size-5" aria-hidden="true" />
-            <span className="text-sm font-bold">{headerName}</span>
+          <div className="flex min-w-0 items-center gap-2">
+            <Building2 className="size-5 shrink-0" aria-hidden="true" />
+            <span className="truncate text-sm font-bold">{headerName}</span>
           </div>
-          <Link to="/" className="text-xs opacity-70">
-            住戶端
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link to="/" className="text-xs opacity-70">
+              住戶端
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="text-xs opacity-70"
+            >
+              登出
+            </button>
+          </div>
         </div>
         <nav
-          className="flex gap-1 overflow-x-auto border-b border-border bg-card px-3 py-2 md:hidden"
+          className="flex gap-1 overflow-x-auto overscroll-x-contain border-b border-border bg-card px-3 py-2 md:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           aria-label="後台導覽"
         >
           {navItems.map((item) => {
@@ -163,7 +172,7 @@ export function AdminShell() {
             )
           })}
         </nav>
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+        <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
           <Outlet />
         </main>
       </div>

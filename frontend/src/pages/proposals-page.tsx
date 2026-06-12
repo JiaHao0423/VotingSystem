@@ -38,8 +38,8 @@ export function ProposalsPage() {
     <div className="min-h-screen bg-background pb-10">
       <SiteHeader subtitle="提案列表" />
       <main className="mx-auto w-full max-w-md px-4 py-6">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-xl font-bold text-foreground">提案投票</h1>
             <p className="text-sm text-muted-foreground">
               您好，{session?.name}（{session?.unitShortName}）

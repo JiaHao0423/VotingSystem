@@ -467,7 +467,7 @@ export function AdminOwnersPage() {
         </Card>
       )}
 
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {summary.map((s) => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-3 pt-6">
@@ -515,7 +515,59 @@ export function AdminOwnersPage() {
         )}
       </div>
 
-      <Card className="mt-4">
+      <div className="mt-4 flex flex-col gap-3 md:hidden">
+        {filtered.map((o) => (
+          <Card key={o.id}>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">{o.name}</p>
+                  <p className="text-sm text-muted-foreground">{o.unitShortName}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{o.phone || '—'}</p>
+                </div>
+                {o.attended ? (
+                  <Badge className="shrink-0 border-chart-3/30 bg-chart-3/10 text-chart-3">
+                    已出席
+                  </Badge>
+                ) : (
+                  <Badge className="shrink-0 bg-muted text-muted-foreground">未出席</Badge>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span>坪數 {o.area != null ? o.area : '—'}</span>
+                <span>比例 {formatRatio(o.ownershipRatio)}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" onClick={() => setDetailOwner(o)}>
+                  詳情
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => openEdit(o)}>
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                  編輯
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => showQr(o)}>
+                  <QrCode className="size-3.5" aria-hidden="true" />
+                  QR
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => removeOwner(o)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  刪除
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {filtered.length === 0 && (
+          <p className="py-10 text-center text-sm text-muted-foreground">查無符合條件的所有權人</p>
+        )}
+      </div>
+
+      <Card className="mt-4 hidden md:block">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -538,7 +590,9 @@ export function AdminOwnersPage() {
                 <TableHead className="text-right">所有權比例</TableHead>
                 <TableHead>手機</TableHead>
                 <TableHead className="text-center">出席</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead className="sticky right-0 bg-card text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
+                  操作
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -573,8 +627,11 @@ export function AdminOwnersPage() {
                       <Badge className="bg-muted text-muted-foreground">未出席</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                  <TableCell
+                    className="sticky right-0 bg-card text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex flex-wrap justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="sm"

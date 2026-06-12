@@ -81,7 +81,9 @@ export function AdminProposalDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{proposal.proposalNumber}</p>
-          <h1 className="text-2xl font-bold text-foreground">{proposal.title}</h1>
+          <h1 className="text-balance text-2xl font-bold break-words text-foreground">
+            {proposal.title}
+          </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <TypeBadge type={proposal.type} />
             <StatusBadge status={proposal.status} />
