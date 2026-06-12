@@ -10,6 +10,7 @@ frontend/dist/
 
 # Local secrets (use application-local.properties.example as template)
 backend/src/main/resources/application-local.properties
+.env
 
 # OS
 .DS_Store
