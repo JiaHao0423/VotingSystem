@@ -2,7 +2,6 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# 先複製 pom.xml 下載依賴，讓 Docker layer cache 加速後續建置
 COPY pom.xml .
 RUN mvn dependency:go-offline -B -q
 
@@ -10,9 +9,18 @@ COPY src ./src
 RUN mvn package -DskipTests -B -q
 
 # ---- Runtime stage ----
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-# 專案打包為 Spring Boot 可執行 WAR
+
+RUN addgroup -S app && adduser -S app -G app
+
 COPY --from=build /app/target/*.war app.war
+RUN chown app:app app.war
+
+USER app
+
+# Zeabur 會注入 PORT；本機 docker-compose 預設 8081
+ENV PORT=8081
 EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "app.war"]
+
+ENTRYPOINT ["sh", "-c", "exec java -jar app.war --server.port=${PORT}"]

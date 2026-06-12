@@ -19,5 +19,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      PORT: 80
+      BACKEND_URL: http://backend:8081
     ports:
       - "${FRONTEND_PORT}:80"
