@@ -43,7 +43,7 @@ spec:
     - key: GHCR_IMAGE
       type: STRING
       name: Docker 映像
-      description: 請改成你的 GHCR 映像，例如 ghcr.io/你的帳號/votingsystem:latest
+      description: 必須全小寫，例如 ghcr.io/jiahao0423/votingsystem:latest
   services:
     - name: VotingSystem
       template: PREBUILT
