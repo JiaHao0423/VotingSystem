@@ -13,6 +13,7 @@ import com.ben.com.backend.web.dto.ProposalResponse;
 import com.ben.com.backend.web.dto.ProposalResultResponse;
 import com.ben.com.backend.web.dto.UpdateProposalRequest;
 import com.ben.com.backend.web.dto.VoteRecordResponse;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,31 +27,37 @@ public class ProposalService {
 	private final UnitRepository unitRepository;
 	private final CommunityService communityService;
 	private final MeetingService meetingService;
+	private final ProposalLifecycleService proposalLifecycleService;
+	private final EntityManager entityManager;
 
 	public ProposalService(
 			ProposalRepository proposalRepository,
 			VoteRecordRepository voteRecordRepository,
 			UnitRepository unitRepository,
 			CommunityService communityService,
-			MeetingService meetingService
+			MeetingService meetingService,
+			ProposalLifecycleService proposalLifecycleService,
+			EntityManager entityManager
 	) {
 		this.proposalRepository = proposalRepository;
 		this.voteRecordRepository = voteRecordRepository;
 		this.unitRepository = unitRepository;
 		this.communityService = communityService;
 		this.meetingService = meetingService;
+		this.proposalLifecycleService = proposalLifecycleService;
+		this.entityManager = entityManager;
 	}
 
-	@Transactional(readOnly = true)
 	public List<ProposalResponse> listForAdmin(Long communityId) {
 		communityService.getById(communityId);
+		syncExpiredStatuses(communityId);
 		return proposalRepository.findByCommunityIdWithMeeting(communityId).stream()
 				.map(proposal -> ProposalResponse.from(proposal, false))
 				.toList();
 	}
 
-	@Transactional(readOnly = true)
 	public List<ProposalResponse> listForVoter(Long communityId, Long ownerId) {
+		syncExpiredStatuses(communityId);
 		var visibleStatuses = List.of(ProposalStatus.ACTIVE, ProposalStatus.SCHEDULED, ProposalStatus.ENDED);
 		return proposalRepository.findVisibleByCommunityIdAndStatusIn(communityId, visibleStatuses).stream()
 				.map(proposal -> ProposalResponse.from(
@@ -60,13 +67,13 @@ public class ProposalService {
 				.toList();
 	}
 
-	@Transactional(readOnly = true)
 	public ProposalResponse getForAdmin(Long communityId, Long proposalId) {
+		syncExpiredStatuses(communityId);
 		return ProposalResponse.from(findProposalInCommunity(communityId, proposalId), false);
 	}
 
-	@Transactional(readOnly = true)
 	public ProposalResponse getForVoter(Long communityId, Long proposalId, Long ownerId) {
+		syncExpiredStatuses(communityId);
 		var proposal = findProposalInCommunity(communityId, proposalId);
 		ensureVoterVisible(proposal);
 		return ProposalResponse.from(proposal, voteRecordRepository.existsByProposalIdAndOwnerId(proposalId, ownerId));
@@ -103,6 +110,7 @@ public class ProposalService {
 	}
 
 	public ProposalResponse start(Long communityId, Long proposalId) {
+		syncExpiredStatuses(communityId);
 		var proposal = findProposalInCommunity(communityId, proposalId);
 		if (proposal.getStatus() == ProposalStatus.ACTIVE) {
 			return ProposalResponse.from(proposal, false);
@@ -130,16 +138,16 @@ public class ProposalService {
 		return ProposalResponse.from(proposal, false);
 	}
 
-	@Transactional(readOnly = true)
 	public ProposalResultResponse getResult(Long communityId, Long proposalId) {
+		syncExpiredStatuses(communityId);
 		var proposal = findProposalInCommunity(communityId, proposalId);
 		var community = proposal.getMeeting().getCommunity();
 		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
 		return ProposalResultCalculator.compute(proposal, community, totalCommunityArea, voteRecordRepository);
 	}
 
-	@Transactional(readOnly = true)
 	public AdminProposalResultResponse getAdminResult(Long communityId, Long proposalId) {
+		syncExpiredStatuses(communityId);
 		var proposal = findProposalInCommunity(communityId, proposalId);
 		var community = proposal.getMeeting().getCommunity();
 		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
@@ -184,5 +192,17 @@ public class ProposalService {
 		proposal.setEndTime(endTime);
 		proposal.setVisible(visible);
 		proposal.setSortOrder(sortOrder);
+	}
+
+	public void syncExpiredProposalsForCommunity(Long communityId) {
+		entityManager.flush();
+		proposalLifecycleService.syncExpiredProposals(communityId);
+		entityManager.clear();
+	}
+
+	private void syncExpiredStatuses(Long communityId) {
+		entityManager.flush();
+		proposalLifecycleService.syncExpiredProposals(communityId);
+		entityManager.clear();
 	}
 }

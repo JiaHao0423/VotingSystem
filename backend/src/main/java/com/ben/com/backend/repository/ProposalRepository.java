@@ -2,10 +2,12 @@ package com.ben.com.backend.repository;
 
 import com.ben.com.backend.domain.entity.Proposal;
 import com.ben.com.backend.domain.enums.ProposalStatus;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -42,4 +44,23 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 	);
 
 	void deleteByMeeting_Community_Id(Long communityId);
+
+	@Modifying(clearAutomatically = true)
+	@Query("""
+			UPDATE Proposal p SET p.status = 'ENDED'
+			WHERE p.status = 'ACTIVE'
+			AND p.endTime IS NOT NULL
+			AND p.endTime <= :now
+			AND p.meeting.community.id = :communityId
+			""")
+	void endActiveProposalsPastEndTime(@Param("communityId") Long communityId, @Param("now") Instant now);
+
+	@Modifying(clearAutomatically = true)
+	@Query("""
+			UPDATE Proposal p SET p.status = 'ENDED'
+			WHERE p.status = 'ACTIVE'
+			AND p.endTime IS NOT NULL
+			AND p.endTime <= :now
+			""")
+	void endAllActiveProposalsPastEndTime(@Param("now") Instant now);
 }

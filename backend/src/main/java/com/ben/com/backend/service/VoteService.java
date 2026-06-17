@@ -36,6 +36,7 @@ public class VoteService {
 	}
 
 	public ProposalResultResponse submitVote(Long proposalId, VoterPrincipal voter, SubmitVoteRequest request) {
+		proposalService.syncExpiredProposalsForCommunity(voter.communityId());
 		var proposal = proposalService.findProposalInCommunity(voter.communityId(), proposalId);
 		if (proposal.getStatus() != ProposalStatus.ACTIVE) {
 			throw new ConflictException("此提案目前不在投票時間內");
@@ -65,8 +66,9 @@ public class VoteService {
 		);
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public ProposalResultResponse getResultForVoter(Long proposalId, VoterPrincipal voter) {
+		proposalService.syncExpiredProposalsForCommunity(voter.communityId());
 		var proposal = proposalService.findProposalInCommunity(voter.communityId(), proposalId);
 		if (!proposal.isVisible() || proposal.getStatus() == ProposalStatus.DRAFT) {
 			throw new ResourceNotFoundException("找不到提案：" + proposalId);
