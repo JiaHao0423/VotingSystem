@@ -16,6 +16,8 @@ public record ProposalResultResponse(
 		List<VoteOptionResult> options,
 		long totalVotedHouseholds,
 		BigDecimal totalVotedWeight,
+		int totalCommunityHouseholds,
+		BigDecimal totalCommunityWeight,
 		double agreeHouseholdRatio,
 		double agreeWeightRatio,
 		boolean passed,

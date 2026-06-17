@@ -335,7 +335,7 @@ export function AdminOwnersPage() {
     { label: '未出席', value: owners.length - attended, icon: Circle },
     {
       label: '區分所有權總計',
-      value: `${Number(community?.totalArea ?? 0).toLocaleString()} 坪`,
+      value: `${owners.reduce((sum, o) => sum + Number(o.area ?? 0), 0).toLocaleString()} 坪`,
       icon: Users,
     },
   ]

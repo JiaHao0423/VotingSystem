@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Clock, CheckCircle2, Vote, LogOut } from 'lucide-react'
+import { ChevronRight, Clock, CheckCircle2, Vote, LogOut, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { SiteHeader } from '@/components/site-header'
 import { StatusBadge, TypeBadge } from '@/components/status-badge'
@@ -9,20 +9,54 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { formatDateTime } from '@/lib/labels'
 import { useAuth } from '@/context/auth-context'
-import type { ProposalSummary } from '@/lib/types'
+import { usePolling } from '@/hooks/use-polling'
+import { cn } from '@/lib/utils'
+import type { ProposalResult, ProposalSummary } from '@/lib/types'
+
+async function loadEndedResults(ended: ProposalSummary[]) {
+  const results: Record<number, ProposalResult> = {}
+  await Promise.all(
+    ended.map(async (p) => {
+      try {
+        results[p.id] = await api.getResults(p.id)
+      } catch {
+        // ignore
+      }
+    }),
+  )
+  return results
+}
 
 export function ProposalsPage() {
   const { session, logout } = useAuth()
   const [proposals, setProposals] = useState<ProposalSummary[]>([])
+  const [endedResults, setEndedResults] = useState<Record<number, ProposalResult>>({})
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    api
-      .listProposals()
-      .then(setProposals)
-      .catch((err: Error) => toast.error(err.message || '無法載入提案'))
-      .finally(() => setLoading(false))
+  const refresh = useCallback(async (silent = false) => {
+    try {
+      const list = await api.listProposals()
+      setProposals(list)
+      const ended = list.filter((p) => p.status === 'ENDED')
+      if (ended.length > 0) {
+        setEndedResults(await loadEndedResults(ended))
+      } else {
+        setEndedResults({})
+      }
+    } catch (err) {
+      if (!silent) {
+        toast.error(err instanceof Error ? err.message : '無法載入提案')
+      }
+    } finally {
+      if (!silent) setLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  usePolling(() => refresh(true))
 
   const visible = proposals.filter(
     (p) => p.status === 'ACTIVE' || p.status === 'SCHEDULED' || p.status === 'ENDED',
@@ -59,6 +93,8 @@ export function ProposalsPage() {
           <ul className="mt-5 flex flex-col gap-3">
             {visible.map((p) => {
               const canVote = p.status === 'ACTIVE' && !p.hasVoted
+              const endedResult = p.status === 'ENDED' ? endedResults[p.id] : null
+              const showPassStatus = endedResult && endedResult.totalVotedHouseholds > 0
               return (
                 <li key={p.id}>
                   <Card className="overflow-hidden">
@@ -66,8 +102,33 @@ export function ProposalsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <TypeBadge type={p.type} />
                         <StatusBadge status={p.status} />
-                        {p.hasVoted && (
+                        {showPassStatus && (
+                          <span
+                            className={cn(
+                              'ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                              endedResult.passed
+                                ? 'bg-chart-3/15 text-chart-3'
+                                : 'bg-chart-5/15 text-chart-5',
+                            )}
+                          >
+                            {endedResult.passed ? (
+                              <>
+                                <CheckCircle2 className="size-3.5" aria-hidden="true" /> 已通過
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="size-3.5" aria-hidden="true" /> 未通過
+                              </>
+                            )}
+                          </span>
+                        )}
+                        {p.hasVoted && !showPassStatus && (
                           <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-chart-3">
+                            <CheckCircle2 className="size-3.5" aria-hidden="true" /> 已投票
+                          </span>
+                        )}
+                        {p.hasVoted && showPassStatus && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-chart-3">
                             <CheckCircle2 className="size-3.5" aria-hidden="true" /> 已投票
                           </span>
                         )}
@@ -108,7 +169,7 @@ export function ProposalsPage() {
 
         <div className="mt-6 flex flex-col items-center gap-2">
           <p className="text-center text-xs text-muted-foreground">
-            僅顯示進行中與已公告之提案，避免誤投
+            僅顯示進行中與已公告之提案，避免誤投 · 每 5 秒自動更新
           </p>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="size-4" aria-hidden="true" />

@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.List;
 
 public final class ProposalResultCalculator {
 
@@ -19,29 +18,40 @@ public final class ProposalResultCalculator {
 	private ProposalResultCalculator() {
 	}
 
-	public static ProposalResultResponse compute(Proposal proposal, Community community, VoteRecordRepository voteRecordRepository) {
-		return compute(proposal, community, voteRecordRepository, null);
+	public static ProposalResultResponse compute(
+			Proposal proposal,
+			Community community,
+			BigDecimal totalCommunityArea,
+			VoteRecordRepository voteRecordRepository
+	) {
+		return compute(proposal, community, totalCommunityArea, voteRecordRepository, null);
 	}
 
 	public static ProposalResultResponse compute(
 			Proposal proposal,
 			Community community,
+			BigDecimal totalCommunityArea,
 			VoteRecordRepository voteRecordRepository,
 			Instant votedAt
 	) {
 		long totalVotes = voteRecordRepository.countByProposalId(proposal.getId());
-		BigDecimal totalWeight = voteRecordRepository.sumWeightByProposalId(proposal.getId());
+		BigDecimal totalVotedWeight = voteRecordRepository.sumWeightByProposalId(proposal.getId());
 
 		var options = Arrays.stream(VoteChoice.values())
-				.map(choice -> toOptionResult(proposal.getId(), choice, totalVotes, totalWeight, voteRecordRepository))
+				.map(choice -> toOptionResult(proposal.getId(), choice, totalVotes, totalVotedWeight, voteRecordRepository))
 				.toList();
 
 		long agreeVotes = voteRecordRepository.countByProposalIdAndChoice(proposal.getId(), VoteChoice.AGREE);
 		BigDecimal agreeWeight = voteRecordRepository.sumWeightByProposalIdAndChoice(proposal.getId(), VoteChoice.AGREE);
 
-		double agreeHouseholdRatio = totalVotes > 0 ? (double) agreeVotes / totalVotes : 0;
-		double agreeWeightRatio = totalWeight.compareTo(BigDecimal.ZERO) > 0
-				? agreeWeight.divide(totalWeight, 6, RoundingMode.HALF_UP).doubleValue()
+		int totalCommunityHouseholds = community.getTotalHouseholds();
+		BigDecimal communityWeight = resolveCommunityWeight(community, totalCommunityArea);
+
+		double agreeHouseholdRatio = totalCommunityHouseholds > 0
+				? (double) agreeVotes / totalCommunityHouseholds
+				: 0;
+		double agreeWeightRatio = communityWeight.compareTo(BigDecimal.ZERO) > 0
+				? agreeWeight.divide(communityWeight, 6, RoundingMode.HALF_UP).doubleValue()
 				: 0;
 		boolean passed = agreeHouseholdRatio > PASS_RATIO && agreeWeightRatio > PASS_RATIO;
 
@@ -54,12 +64,21 @@ public final class ProposalResultCalculator {
 				proposal.getStatus(),
 				options,
 				totalVotes,
-				totalWeight,
+				totalVotedWeight,
+				totalCommunityHouseholds,
+				communityWeight,
 				agreeHouseholdRatio,
 				agreeWeightRatio,
 				passed,
 				votedAt
 		);
+	}
+
+	static BigDecimal resolveCommunityWeight(Community community, BigDecimal unitsAreaSum) {
+		if (unitsAreaSum.compareTo(BigDecimal.ZERO) > 0) {
+			return unitsAreaSum;
+		}
+		return community.getTotalArea() != null ? community.getTotalArea() : BigDecimal.ZERO;
 	}
 
 	private static VoteOptionResult toOptionResult(

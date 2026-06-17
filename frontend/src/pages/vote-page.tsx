@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { choiceLabel, VOTE_OPTIONS } from '@/lib/labels'
 import { useAuth } from '@/context/auth-context'
+import { usePolling } from '@/hooks/use-polling'
 import type { ProposalSummary, VoteChoice } from '@/lib/types'
 
 export function VotePage() {
@@ -54,6 +55,28 @@ export function VotePage() {
       })
       .finally(() => setLoading(false))
   }, [proposalId, navigate])
+
+  const pollProposal = useCallback(async () => {
+    if (!proposalId || step === 'confirm' || submitting) return
+    try {
+      const p = await api.getProposal(proposalId)
+      if (p.hasVoted) {
+        toast.info('您已對此提案投票')
+        navigate(`/proposals/${p.id}/result`, { replace: true })
+        return
+      }
+      if (p.status !== 'ACTIVE') {
+        toast.info('此提案已結束或暫停投票')
+        navigate('/proposals', { replace: true })
+        return
+      }
+      setProposal(p)
+    } catch {
+      // ignore transient errors during polling
+    }
+  }, [proposalId, navigate, step, submitting])
+
+  usePolling(pollProposal, 5000, !loading && !!proposal)
 
   function proceed() {
     if (!selected) {

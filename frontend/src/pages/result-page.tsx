@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, XCircle, Scale, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { api } from '@/lib/api'
 import { pct } from '@/lib/labels'
+import { usePolling } from '@/hooks/use-polling'
 import type { ProposalResult } from '@/lib/types'
 
 export function ResultPage() {
@@ -19,14 +20,29 @@ export function ResultPage() {
   const [result, setResult] = useState<ProposalResult | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const refresh = useCallback(
+    async (silent = false) => {
+      if (!proposalId) return
+      try {
+        const data = await api.getResults(proposalId)
+        setResult(data)
+      } catch (err) {
+        if (!silent) {
+          toast.error(err instanceof Error ? err.message : '無法載入結果')
+        }
+      } finally {
+        if (!silent) setLoading(false)
+      }
+    },
+    [proposalId],
+  )
+
   useEffect(() => {
-    if (!proposalId) return
-    api
-      .getResults(proposalId)
-      .then(setResult)
-      .catch((err: Error) => toast.error(err.message || '無法載入結果'))
-      .finally(() => setLoading(false))
-  }, [proposalId])
+    void refresh()
+  }, [refresh])
+
+  const isLive = result?.status === 'ACTIVE'
+  usePolling(() => refresh(true), 5000, isLive)
 
   if (loading || !result) {
     return (
@@ -65,6 +81,15 @@ export function ResultPage() {
             <div className="flex flex-wrap items-center gap-2">
               <TypeBadge type={result.type} />
               <StatusBadge status={result.status} />
+              {result.status === 'ENDED' && hasVotes && (
+                <span
+                  className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${
+                    result.passed ? 'bg-chart-3/15 text-chart-3' : 'bg-chart-5/15 text-chart-5'
+                  }`}
+                >
+                  {result.passed ? '已通過' : '未通過'}
+                </span>
+              )}
             </div>
             <p className="mt-2 text-xs font-medium text-muted-foreground">{result.proposalNumber}</p>
             <h1 className="mt-0.5 text-pretty text-lg font-bold leading-snug text-foreground">{result.title}</h1>
@@ -74,9 +99,9 @@ export function ResultPage() {
         <Card className="mt-4">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-base">即時投票結果</CardTitle>
-            {result.status === 'ACTIVE' && (
+            {isLive && (
               <span className="inline-flex items-center gap-1 text-xs text-chart-3">
-                <RefreshCw className="size-3.5" aria-hidden="true" /> 即時更新
+                <RefreshCw className="size-3.5 animate-spin" aria-hidden="true" /> 即時更新
               </span>
             )}
           </CardHeader>
@@ -102,14 +127,18 @@ export function ResultPage() {
                 <div className="rounded-lg bg-secondary p-3">
                   <p className="text-xs text-muted-foreground">已投票戶數</p>
                   <p className="mt-1 text-xl font-black text-foreground">{result.totalVotedHouseholds}</p>
-                  <p className="text-xs text-muted-foreground">戶</p>
+                  <p className="text-xs text-muted-foreground">/ 全社區 {result.totalCommunityHouseholds} 戶</p>
                 </div>
                 <div className="rounded-lg bg-secondary p-3">
-                  <p className="text-xs text-muted-foreground">已投票區分所有權</p>
+                  <p className="text-xs text-muted-foreground">同意表決權數</p>
                   <p className="mt-1 text-xl font-black text-foreground">
-                    {Number(result.totalVotedWeight).toLocaleString()}
+                    {Number(
+                      result.options.find((o) => o.choice === 'AGREE')?.weight ?? 0,
+                    ).toLocaleString()}
                   </p>
-                  <p className="text-xs text-muted-foreground">坪</p>
+                  <p className="text-xs text-muted-foreground">
+                    / 全社區 {Number(result.totalCommunityWeight).toLocaleString()} 坪
+                  </p>
                 </div>
               </div>
 
@@ -117,11 +146,11 @@ export function ResultPage() {
 
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">同意比例（人數）</span>
+                  <span className="text-muted-foreground">同意比例（人數／全社區）</span>
                   <span className="font-medium text-foreground">{pct(result.agreeHouseholdRatio)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">同意比例（區分所有權）</span>
+                  <span className="text-muted-foreground">同意比例（區分所有權／全社區）</span>
                   <span className="font-medium text-foreground">{pct(result.agreeWeightRatio)}</span>
                 </div>
               </div>
@@ -139,7 +168,7 @@ export function ResultPage() {
                 <div>
                   <p className="text-sm font-bold">{result.passed ? '本提案已通過' : '本提案未通過'}</p>
                   <p className="text-xs opacity-80">
-                    依《公寓大廈管理條例》需同意人數與區分所有權比例均過半
+                    依《公寓大廈管理條例》需同意人數與區分所有權比例均超過全社區 50%
                   </p>
                 </div>
               </div>

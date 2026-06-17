@@ -5,6 +5,7 @@ import com.ben.com.backend.domain.enums.ProposalStatus;
 import com.ben.com.backend.exception.ConflictException;
 import com.ben.com.backend.exception.ResourceNotFoundException;
 import com.ben.com.backend.repository.ProposalRepository;
+import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.repository.VoteRecordRepository;
 import com.ben.com.backend.web.dto.AdminProposalResultResponse;
 import com.ben.com.backend.web.dto.CreateProposalRequest;
@@ -22,17 +23,20 @@ public class ProposalService {
 
 	private final ProposalRepository proposalRepository;
 	private final VoteRecordRepository voteRecordRepository;
+	private final UnitRepository unitRepository;
 	private final CommunityService communityService;
 	private final MeetingService meetingService;
 
 	public ProposalService(
 			ProposalRepository proposalRepository,
 			VoteRecordRepository voteRecordRepository,
+			UnitRepository unitRepository,
 			CommunityService communityService,
 			MeetingService meetingService
 	) {
 		this.proposalRepository = proposalRepository;
 		this.voteRecordRepository = voteRecordRepository;
+		this.unitRepository = unitRepository;
 		this.communityService = communityService;
 		this.meetingService = meetingService;
 	}
@@ -130,14 +134,16 @@ public class ProposalService {
 	public ProposalResultResponse getResult(Long communityId, Long proposalId) {
 		var proposal = findProposalInCommunity(communityId, proposalId);
 		var community = proposal.getMeeting().getCommunity();
-		return ProposalResultCalculator.compute(proposal, community, voteRecordRepository);
+		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
+		return ProposalResultCalculator.compute(proposal, community, totalCommunityArea, voteRecordRepository);
 	}
 
 	@Transactional(readOnly = true)
 	public AdminProposalResultResponse getAdminResult(Long communityId, Long proposalId) {
 		var proposal = findProposalInCommunity(communityId, proposalId);
 		var community = proposal.getMeeting().getCommunity();
-		var summary = ProposalResultCalculator.compute(proposal, community, voteRecordRepository);
+		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
+		var summary = ProposalResultCalculator.compute(proposal, community, totalCommunityArea, voteRecordRepository);
 		var voters = voteRecordRepository.findByProposalIdWithOwner(proposalId).stream()
 				.map(record -> new VoteRecordResponse(
 						record.getOwner().getId(),

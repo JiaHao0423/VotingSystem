@@ -41,6 +41,7 @@ export function AdminDashboardPage() {
 
   const activeProposals = proposals.filter((p) => p.status === 'ACTIVE')
   const attended = owners.filter((o) => o.attended).length
+  const totalOwnershipArea = owners.reduce((sum, o) => sum + Number(o.area ?? 0), 0)
 
   const stats = [
     {
@@ -66,8 +67,8 @@ export function AdminDashboardPage() {
     },
     {
       label: '區分所有權總計',
-      value: `${Number(community?.totalArea ?? 0).toLocaleString()} 坪`,
-      sub: community?.name ?? '',
+      value: `${totalOwnershipArea.toLocaleString()} 坪`,
+      sub: `共 ${owners.length} 戶已建檔`,
       icon: BarChart3,
       tint: 'text-primary bg-primary/10',
     },

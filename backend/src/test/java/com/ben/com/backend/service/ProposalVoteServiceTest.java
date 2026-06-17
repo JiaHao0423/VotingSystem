@@ -96,7 +96,7 @@ class ProposalVoteServiceTest {
 
 		assertThat(result.totalVotedHouseholds()).isEqualTo(1);
 		assertThat(result.options()).anyMatch(option -> option.choice() == VoteChoice.AGREE && option.votes() == 1);
-		assertThat(result.passed()).isTrue();
+		assertThat(result.passed()).isFalse();
 
 		assertThatThrownBy(() -> voteService.submitVote(proposalId, voter, request))
 				.isInstanceOf(ConflictException.class)

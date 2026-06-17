@@ -2,6 +2,7 @@ package com.ben.com.backend.repository;
 
 import com.ben.com.backend.domain.entity.Unit;
 import com.ben.com.backend.domain.enums.BuildingType;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
@@ -29,4 +30,10 @@ public interface UnitRepository extends JpaRepository<Unit, Long> {
 			ORDER BY u.buildingType, u.floor, u.unitNo, u.shopNo
 			""")
 	List<Unit> findUnassignedByCommunityId(@Param("communityId") Long communityId);
+
+	@Query("""
+			SELECT COALESCE(SUM(u.area), 0) FROM Unit u
+			WHERE u.community.id = :communityId
+			""")
+	BigDecimal sumAreaByCommunityId(@Param("communityId") Long communityId);
 }

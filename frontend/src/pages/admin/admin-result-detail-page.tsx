@@ -67,7 +67,7 @@ export function AdminResultDetailPage() {
           )}
           <div>
             <p className="text-lg font-bold">{r.passed ? '本提案已通過' : '本提案未通過'}</p>
-            <p className="text-sm opacity-80">依《公寓大廈管理條例》自動判定</p>
+            <p className="text-sm opacity-80">依《公寓大廈管理條例》，同意人數與區分所有權比例均須超過全社區 50%</p>
           </div>
         </div>
       )}
@@ -95,11 +95,11 @@ export function AdminResultDetailPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">同意比例（人數）</span>
+              <span className="text-muted-foreground">同意比例（人數／全社區）</span>
               <span className="font-medium">{pct(r.agreeHouseholdRatio)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">同意比例（區分所有權）</span>
+              <span className="text-muted-foreground">同意比例（區分所有權／全社區）</span>
               <span className="font-medium">{pct(r.agreeWeightRatio)}</span>
             </div>
             <Separator />
@@ -107,10 +107,12 @@ export function AdminResultDetailPage() {
               <div className="rounded-lg bg-secondary p-3">
                 <p className="text-xs text-muted-foreground">已投票戶數</p>
                 <p className="text-xl font-black">{r.totalVotedHouseholds}</p>
+                <p className="text-xs text-muted-foreground">/ 全社區 {r.totalCommunityHouseholds} 戶</p>
               </div>
               <div className="rounded-lg bg-secondary p-3">
-                <p className="text-xs text-muted-foreground">已投票權數（坪）</p>
-                <p className="text-xl font-black">{Number(r.totalVotedWeight).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">全社區表決權數</p>
+                <p className="text-xl font-black">{Number(r.totalCommunityWeight).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">坪</p>
               </div>
             </div>
           </CardContent>

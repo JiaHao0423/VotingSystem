@@ -5,6 +5,7 @@ import com.ben.com.backend.domain.enums.ProposalStatus;
 import com.ben.com.backend.exception.ConflictException;
 import com.ben.com.backend.exception.ResourceNotFoundException;
 import com.ben.com.backend.repository.OwnerRepository;
+import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.repository.VoteRecordRepository;
 import com.ben.com.backend.security.VoterPrincipal;
 import com.ben.com.backend.web.dto.ProposalResultResponse;
@@ -19,15 +20,18 @@ public class VoteService {
 
 	private final VoteRecordRepository voteRecordRepository;
 	private final OwnerRepository ownerRepository;
+	private final UnitRepository unitRepository;
 	private final ProposalService proposalService;
 
 	public VoteService(
 			VoteRecordRepository voteRecordRepository,
 			OwnerRepository ownerRepository,
+			UnitRepository unitRepository,
 			ProposalService proposalService
 	) {
 		this.voteRecordRepository = voteRecordRepository;
 		this.ownerRepository = ownerRepository;
+		this.unitRepository = unitRepository;
 		this.proposalService = proposalService;
 	}
 
@@ -51,7 +55,14 @@ public class VoteService {
 		voteRecordRepository.save(record);
 
 		var community = proposal.getMeeting().getCommunity();
-		return ProposalResultCalculator.compute(proposal, community, voteRecordRepository, record.getVotedAt());
+		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
+		return ProposalResultCalculator.compute(
+				proposal,
+				community,
+				totalCommunityArea,
+				voteRecordRepository,
+				record.getVotedAt()
+		);
 	}
 
 	@Transactional(readOnly = true)
@@ -61,9 +72,16 @@ public class VoteService {
 			throw new ResourceNotFoundException("找不到提案：" + proposalId);
 		}
 		var community = proposal.getMeeting().getCommunity();
+		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
 		var votedAt = voteRecordRepository.findByProposalIdAndOwnerId(proposalId, voter.ownerId())
 				.map(VoteRecord::getVotedAt)
 				.orElse(null);
-		return ProposalResultCalculator.compute(proposal, community, voteRecordRepository, votedAt);
+		return ProposalResultCalculator.compute(
+				proposal,
+				community,
+				totalCommunityArea,
+				voteRecordRepository,
+				votedAt
+		);
 	}
 }

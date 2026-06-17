@@ -61,6 +61,8 @@ export interface ProposalResult {
   options: VoteOptionResult[]
   totalVotedHouseholds: number
   totalVotedWeight: number
+  totalCommunityHouseholds: number
+  totalCommunityWeight: number
   agreeHouseholdRatio: number
   agreeWeightRatio: number
   passed: boolean
