@@ -42,13 +42,22 @@ async function handleResponse<T>(res: Response): Promise<T> {
     if (res.status === 204) return undefined as T
     return res.json() as Promise<T>
   }
-  let message = res.statusText
-  try {
-    const body = await res.json()
-    message = body.message ?? body.error ?? message
-  } catch {
-    // ignore
-  }
+		let message = res.statusText
+		try {
+			const body = await res.json()
+			if (body.fields && typeof body.fields === 'object') {
+				const fieldMsgs = Object.entries(body.fields as Record<string, string>)
+					.map(([field, detail]) => `${field}: ${detail}`)
+					.join('、')
+				if (fieldMsgs) {
+					message = fieldMsgs
+				}
+			}
+			message = body.message ?? message
+			message = body.error && message === res.statusText ? body.error : message
+		} catch {
+			// ignore
+		}
   throw new Error(message || `HTTP ${res.status}`)
 }
 

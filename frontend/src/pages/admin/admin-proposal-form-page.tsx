@@ -33,6 +33,15 @@ function toLocalDatetime(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function parsePositiveInt(value: string, fallback: number): number {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) && parsed >= 1 ? parsed : fallback
+}
+
+function clampThreshold(value: number, fallback: number): number {
+  return Number.isFinite(value) && value >= 1 ? value : fallback
+}
+
 function fromLocalDatetime(value: string): string | null {
   if (!value) return null
   return new Date(value).toISOString()
@@ -83,8 +92,8 @@ export function AdminProposalFormPage({ mode }: { mode: 'new' | 'edit' }) {
             })),
           ),
         )
-        setPassNumerator(p.passThresholdNumerator)
-        setPassDenominator(p.passThresholdDenominator)
+        setPassNumerator(Math.max(1, p.passThresholdNumerator))
+        setPassDenominator(Math.max(1, p.passThresholdDenominator))
         setThresholdBase(p.thresholdBase)
         setAllowRevote(p.allowRevote)
       })
@@ -190,6 +199,12 @@ export function AdminProposalFormPage({ mode }: { mode: 'new' | 'edit' }) {
       toast.error('請填寫所有投票選項名稱')
       return
     }
+    const numerator = clampThreshold(passNumerator, 1)
+    const denominator = clampThreshold(passDenominator, 1)
+    if (numerator > denominator) {
+      toast.error('通過門檻分子不可大於分母')
+      return
+    }
     setSubmitting(true)
     const body = {
       proposalNumber: proposalNumber.trim(),
@@ -204,8 +219,8 @@ export function AdminProposalFormPage({ mode }: { mode: 'new' | 'edit' }) {
         description: o.description?.trim() || null,
         passOption: o.passOption,
       })),
-      passThresholdNumerator: passNumerator,
-      passThresholdDenominator: passDenominator,
+      passThresholdNumerator: numerator,
+      passThresholdDenominator: denominator,
       thresholdBase,
       allowRevote,
     }
@@ -413,7 +428,7 @@ export function AdminProposalFormPage({ mode }: { mode: 'new' | 'edit' }) {
                   type="number"
                   min={1}
                   value={passNumerator}
-                  onChange={(e) => setPassNumerator(Number(e.target.value))}
+                  onChange={(e) => setPassNumerator(parsePositiveInt(e.target.value, 1))}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -422,7 +437,7 @@ export function AdminProposalFormPage({ mode }: { mode: 'new' | 'edit' }) {
                   type="number"
                   min={1}
                   value={passDenominator}
-                  onChange={(e) => setPassDenominator(Number(e.target.value))}
+                  onChange={(e) => setPassDenominator(parsePositiveInt(e.target.value, 2))}
                 />
               </div>
               <div className="flex flex-col gap-1.5">

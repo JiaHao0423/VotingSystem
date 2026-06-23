@@ -56,6 +56,7 @@ public class GlobalExceptionHandler {
 				"timestamp", Instant.now().toString(),
 				"status", HttpStatus.BAD_REQUEST.value(),
 				"error", "Validation failed",
+				"message", fieldErrors.values().stream().findFirst().orElse("資料驗證失敗"),
 				"fields", fieldErrors
 		));
 	}
