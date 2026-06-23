@@ -1,7 +1,6 @@
 package com.ben.com.backend.repository;
 
 import com.ben.com.backend.domain.entity.Proposal;
-import com.ben.com.backend.domain.enums.ProposalStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -35,13 +34,9 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 			JOIN FETCH p.meeting m
 			WHERE m.community.id = :communityId
 			AND p.visible = true
-			AND p.status IN :statuses
 			ORDER BY p.sortOrder, p.id
 			""")
-	List<Proposal> findVisibleByCommunityIdAndStatusIn(
-			@Param("communityId") Long communityId,
-			@Param("statuses") List<ProposalStatus> statuses
-	);
+	List<Proposal> findVisibleByCommunityId(@Param("communityId") Long communityId);
 
 	void deleteByMeeting_Community_Id(Long communityId);
 
@@ -63,4 +58,10 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 			AND p.endTime <= :now
 			""")
 	void endAllActiveProposalsPastEndTime(@Param("now") Instant now);
+
+	@Query("""
+			SELECT COALESCE(MAX(p.sortOrder), -1) FROM Proposal p
+			WHERE p.meeting.community.id = :communityId
+			""")
+	int maxSortOrderByCommunityId(@Param("communityId") Long communityId);
 }

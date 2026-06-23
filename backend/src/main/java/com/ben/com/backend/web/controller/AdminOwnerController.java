@@ -1,7 +1,10 @@
 package com.ben.com.backend.web.controller;
 
 import com.ben.com.backend.service.OwnerService;
+import com.ben.com.backend.web.dto.AttendanceUpdateRequest;
 import com.ben.com.backend.web.dto.AuthCodeRegeneratedResponse;
+import com.ben.com.backend.web.dto.BatchAttendanceRequest;
+import com.ben.com.backend.web.dto.BatchAttendanceResponse;
 import com.ben.com.backend.web.dto.BatchDeleteOwnersRequest;
 import com.ben.com.backend.web.dto.BatchDeleteOwnersResponse;
 import com.ben.com.backend.web.dto.CreateOwnerRequest;
@@ -73,6 +76,24 @@ public class AdminOwnerController {
 	) {
 		var deleted = ownerService.deleteMany(communityId, request.ownerIds());
 		return new BatchDeleteOwnersResponse(deleted);
+	}
+
+	@PostMapping("/batch-attendance")
+	public BatchAttendanceResponse batchAttendance(
+			@PathVariable Long communityId,
+			@Valid @RequestBody BatchAttendanceRequest request
+	) {
+		var updated = ownerService.batchUpdateAttendance(communityId, request);
+		return new BatchAttendanceResponse(updated);
+	}
+
+	@PostMapping("/{ownerId}/attendance")
+	public OwnerResponse updateAttendance(
+			@PathVariable Long communityId,
+			@PathVariable Long ownerId,
+			@Valid @RequestBody AttendanceUpdateRequest request
+	) {
+		return ownerService.updateAttendance(communityId, ownerId, request.attended());
 	}
 
 	@DeleteMapping("/{ownerId}")

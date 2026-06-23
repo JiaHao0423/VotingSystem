@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ben.com.backend.domain.entity.Unit;
 import com.ben.com.backend.domain.enums.BuildingType;
 import com.ben.com.backend.domain.enums.ProposalType;
-import com.ben.com.backend.domain.enums.VoteChoice;
 import com.ben.com.backend.repository.OwnerRepository;
 import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.repository.VoteRecordRepository;
@@ -218,7 +217,7 @@ class OwnerServiceTest {
 				true
 		);
 		var voteRequest = new SubmitVoteRequest();
-		voteRequest.setChoice(VoteChoice.AGREE);
+		voteRequest.setChoiceKey("AGREE");
 		voteService.submitVote(proposal.id(), voter, voteRequest);
 
 		assertThat(voteRecordRepository.existsByProposalIdAndOwnerId(proposal.id(), created.owner().id())).isTrue();

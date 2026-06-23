@@ -2,7 +2,12 @@ package com.ben.com.backend.domain.entity;
 
 import com.ben.com.backend.domain.enums.ProposalStatus;
 import com.ben.com.backend.domain.enums.ProposalType;
+import com.ben.com.backend.domain.enums.ThresholdBase;
+import com.ben.com.backend.domain.model.VoteOptionItem;
+import com.ben.com.backend.domain.converter.VoteOptionsConverter;
+import com.ben.com.backend.util.VoteOptionDefaults;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,17 +19,22 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "proposals")
 @Getter
 @Setter
 @NoArgsConstructor
+@SuppressWarnings({"JpaAttributeMemberInspection", "JpaDataSourceORMInspection"})
 public class Proposal {
 
 	@Id
@@ -64,6 +74,24 @@ public class Proposal {
 	@Column(name = "sort_order", nullable = false)
 	private int sortOrder = 0;
 
+	@Convert(converter = VoteOptionsConverter.class)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(name = "vote_options", nullable = false, columnDefinition = "TEXT")
+	private List<VoteOptionItem> voteOptions = new ArrayList<>(VoteOptionDefaults.standard());
+
+	@Column(name = "pass_threshold_numerator", nullable = false)
+	private int passThresholdNumerator = 1;
+
+	@Column(name = "pass_threshold_denominator", nullable = false)
+	private int passThresholdDenominator = 2;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "threshold_base", nullable = false, length = 20)
+	private ThresholdBase thresholdBase = ThresholdBase.ATTENDED;
+
+	@Column(name = "allow_revote", nullable = false)
+	private boolean allowRevote = true;
+
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -78,6 +106,5 @@ public class Proposal {
 		this.title = title;
 		this.content = content;
 		this.type = type;
-		this.status = ProposalStatus.DRAFT;
 	}
 }

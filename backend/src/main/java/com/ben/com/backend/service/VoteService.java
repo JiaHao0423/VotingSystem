@@ -2,15 +2,19 @@ package com.ben.com.backend.service;
 
 import com.ben.com.backend.domain.entity.VoteRecord;
 import com.ben.com.backend.domain.enums.ProposalStatus;
+import com.ben.com.backend.domain.model.VoteOptionItem;
 import com.ben.com.backend.exception.ConflictException;
 import com.ben.com.backend.exception.ResourceNotFoundException;
 import com.ben.com.backend.repository.OwnerRepository;
 import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.repository.VoteRecordRepository;
 import com.ben.com.backend.security.VoterPrincipal;
+import com.ben.com.backend.util.VoteOptionDefaults;
 import com.ben.com.backend.web.dto.ProposalResultResponse;
 import com.ben.com.backend.web.dto.SubmitVoteRequest;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,29 +48,50 @@ public class VoteService {
 		if (!proposal.isVisible()) {
 			throw new ResourceNotFoundException("找不到提案：" + proposalId);
 		}
-		if (voteRecordRepository.existsByProposalIdAndOwnerId(proposalId, voter.ownerId())) {
-			throw new ConflictException("您已對此提案投票，無法重複投票");
+
+		var validKeys = VoteOptionDefaults.normalize(proposal.getVoteOptions()).stream()
+				.map(VoteOptionItem::key)
+				.collect(Collectors.toSet());
+		if (!validKeys.contains(request.getChoiceKey())) {
+			throw new ConflictException("無效的投票選項");
 		}
 
 		var owner = ownerRepository.findByIdWithUnit(voter.ownerId())
 				.orElseThrow(() -> new ResourceNotFoundException("找不到所有權人：" + voter.ownerId()));
 		var voteWeight = owner.getUnit().getArea() != null ? owner.getUnit().getArea() : BigDecimal.ZERO;
 
-		var record = new VoteRecord(proposal, owner, request.getChoice(), voteWeight);
-		voteRecordRepository.save(record);
+		var existing = voteRecordRepository.findByProposalIdAndOwnerId(proposalId, voter.ownerId());
+		VoteRecord record;
+		if (existing.isPresent()) {
+			if (!proposal.isAllowRevote()) {
+				throw new ConflictException("您已對此提案投票，無法重複投票");
+			}
+			record = existing.get();
+			record.setChoiceKey(request.getChoiceKey());
+			record.setVoteWeight(voteWeight);
+			record.setVotedAt(Instant.now());
+		} else {
+			record = new VoteRecord(proposal, owner, request.getChoiceKey(), voteWeight);
+			record.setVotedAt(Instant.now());
+			voteRecordRepository.save(record);
+		}
 
 		var community = proposal.getMeeting().getCommunity();
-		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
+		var communityId = community.getId();
+		var totalCommunityArea = unitRepository.sumAreaByCommunityId(communityId);
+		var attendedHouseholds = ownerRepository.countAttendedByCommunityId(communityId);
+		var attendedWeight = ownerRepository.sumAttendedAreaByCommunityId(communityId);
 		return ProposalResultCalculator.compute(
 				proposal,
 				community,
 				totalCommunityArea,
+				attendedHouseholds,
+				attendedWeight,
 				voteRecordRepository,
 				record.getVotedAt()
 		);
 	}
 
-	@Transactional
 	public ProposalResultResponse getResultForVoter(Long proposalId, VoterPrincipal voter) {
 		proposalService.syncExpiredProposalsForCommunity(voter.communityId());
 		var proposal = proposalService.findProposalInCommunity(voter.communityId(), proposalId);
@@ -74,7 +99,10 @@ public class VoteService {
 			throw new ResourceNotFoundException("找不到提案：" + proposalId);
 		}
 		var community = proposal.getMeeting().getCommunity();
-		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
+		var communityId = community.getId();
+		var totalCommunityArea = unitRepository.sumAreaByCommunityId(communityId);
+		var attendedHouseholds = ownerRepository.countAttendedByCommunityId(communityId);
+		var attendedWeight = ownerRepository.sumAttendedAreaByCommunityId(communityId);
 		var votedAt = voteRecordRepository.findByProposalIdAndOwnerId(proposalId, voter.ownerId())
 				.map(VoteRecord::getVotedAt)
 				.orElse(null);
@@ -82,6 +110,8 @@ public class VoteService {
 				proposal,
 				community,
 				totalCommunityArea,
+				attendedHouseholds,
+				attendedWeight,
 				voteRecordRepository,
 				votedAt
 		);

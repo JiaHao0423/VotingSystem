@@ -1,4 +1,4 @@
-import type { ProposalResult, ProposalSummary, ProposalType, VoteChoice } from './types'
+import type { ProposalResult, ProposalSummary, ProposalType, ThresholdBase } from './types'
 
 export interface Community {
   id: number
@@ -155,6 +155,12 @@ export interface UnitImportResult {
   rows: UnitImportRowResult[]
 }
 
+export interface VoteOptionInput {
+  label: string
+  description?: string | null
+  passOption: boolean
+}
+
 export interface CreateProposalBody {
   proposalNumber: string
   title: string
@@ -163,7 +169,11 @@ export interface CreateProposalBody {
   startTime?: string | null
   endTime?: string | null
   visible?: boolean
-  sortOrder?: number
+  voteOptions?: VoteOptionInput[]
+  passThresholdNumerator?: number
+  passThresholdDenominator?: number
+  thresholdBase?: ThresholdBase
+  allowRevote?: boolean
 }
 
 export type AdminProposal = Omit<ProposalSummary, 'hasVoted'>
@@ -174,7 +184,7 @@ export interface AdminResultDetail {
     ownerId: number
     ownerName: string
     unitShortName: string
-    choice: VoteChoice
+    choiceKey: string
     choiceLabel: string
     votedAt: string
   }[]

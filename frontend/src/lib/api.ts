@@ -5,7 +5,6 @@ import type {
   QrPreview,
   UnitOptionsResponse,
   VoterSession,
-  VoteChoice,
 } from './types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
@@ -89,10 +88,10 @@ export const api = {
     return fetchApi(`/api/proposals/${id}`).then((res) => handleResponse<ProposalSummary>(res))
   },
 
-  submitVote(proposalId: number, choice: VoteChoice): Promise<void> {
+  submitVote(proposalId: number, choiceKey: string): Promise<void> {
     return fetchApi(`/api/proposals/${proposalId}/votes`, {
       method: 'POST',
-      body: JSON.stringify({ choice }),
+      body: JSON.stringify({ choiceKey }),
     }).then((res) => handleResponse<void>(res))
   },
 

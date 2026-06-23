@@ -1,10 +1,7 @@
 package com.ben.com.backend.domain.entity;
 
-import com.ben.com.backend.domain.enums.VoteChoice;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -42,21 +39,20 @@ public class VoteRecord {
 	@JoinColumn(name = "owner_id", nullable = false)
 	private Owner owner;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 20)
-	private VoteChoice choice;
+	@Column(name = "choice", nullable = false, length = 50, columnDefinition = "VARCHAR(50)")
+	private String choiceKey;
 
 	@Column(name = "vote_weight", precision = 10, scale = 2, nullable = false)
 	private BigDecimal voteWeight;
 
 	@CreationTimestamp
-	@Column(name = "voted_at", nullable = false, updatable = false)
+	@Column(name = "voted_at", nullable = false)
 	private Instant votedAt;
 
-	public VoteRecord(Proposal proposal, Owner owner, VoteChoice choice, BigDecimal voteWeight) {
+	public VoteRecord(Proposal proposal, Owner owner, String choiceKey, BigDecimal voteWeight) {
 		this.proposal = proposal;
 		this.owner = owner;
-		this.choice = choice;
+		this.choiceKey = choiceKey;
 		this.voteWeight = voteWeight;
 	}
 }

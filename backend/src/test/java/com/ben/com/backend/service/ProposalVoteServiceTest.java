@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.ben.com.backend.domain.entity.Unit;
 import com.ben.com.backend.domain.enums.BuildingType;
 import com.ben.com.backend.domain.enums.ProposalType;
-import com.ben.com.backend.domain.enums.VoteChoice;
 import com.ben.com.backend.exception.ConflictException;
 import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.security.VoterPrincipal;
@@ -88,14 +87,24 @@ class ProposalVoteServiceTest {
 	}
 
 	@Test
-	void submitVoteRecordsChoiceAndPreventsDuplicate() {
+	void submitVoteRecordsChoiceAndPreventsDuplicateWhenRevoteDisabled() {
+		var community = communityService.getDefaultCommunity();
+		var update = new com.ben.com.backend.web.dto.UpdateProposalRequest();
+		update.setProposalNumber("第一案");
+		update.setTitle("測試提案");
+		update.setContent("提案內容");
+		update.setType(ProposalType.GENERAL);
+		update.setVisible(true);
+		update.setAllowRevote(false);
+		proposalService.update(community.getId(), proposalId, update);
+
 		var request = new SubmitVoteRequest();
-		request.setChoice(VoteChoice.AGREE);
+		request.setChoiceKey("AGREE");
 
 		var result = voteService.submitVote(proposalId, voter, request);
 
 		assertThat(result.totalVotedHouseholds()).isEqualTo(1);
-		assertThat(result.options()).anyMatch(option -> option.choice() == VoteChoice.AGREE && option.votes() == 1);
+		assertThat(result.options()).anyMatch(option -> "AGREE".equals(option.choiceKey()) && option.votes() == 1);
 		assertThat(result.passed()).isFalse();
 
 		assertThatThrownBy(() -> voteService.submitVote(proposalId, voter, request))
@@ -104,11 +113,24 @@ class ProposalVoteServiceTest {
 	}
 
 	@Test
+	void submitVoteAllowsRevoteWhenEnabled() {
+		var request = new SubmitVoteRequest();
+		request.setChoiceKey("AGREE");
+		voteService.submitVote(proposalId, voter, request);
+
+		request.setChoiceKey("DISAGREE");
+		var result = voteService.submitVote(proposalId, voter, request);
+
+		assertThat(result.totalVotedHouseholds()).isEqualTo(1);
+		assertThat(result.options()).anyMatch(option -> "DISAGREE".equals(option.choiceKey()) && option.votes() == 1);
+	}
+
+	@Test
 	void cannotVoteWhenProposalNotActive() {
 		proposalService.stop(voter.communityId(), proposalId);
 
 		var request = new SubmitVoteRequest();
-		request.setChoice(VoteChoice.DISAGREE);
+		request.setChoiceKey("DISAGREE");
 
 		assertThatThrownBy(() -> voteService.submitVote(proposalId, voter, request))
 				.isInstanceOf(ConflictException.class)
@@ -118,10 +140,22 @@ class ProposalVoteServiceTest {
 	@Test
 	void voterSeesHasVotedFlagAfterVoting() {
 		var request = new SubmitVoteRequest();
-		request.setChoice(VoteChoice.ABSTAIN);
+		request.setChoiceKey("ABSTAIN");
 		voteService.submitVote(proposalId, voter, request);
 
 		var list = proposalService.listForVoter(voter.communityId(), voter.ownerId());
 		assertThat(list).anyMatch(proposal -> proposal.id().equals(proposalId) && proposal.hasVoted());
+	}
+
+	@Test
+	void voterCanLoadResultAfterVoting() {
+		var request = new SubmitVoteRequest();
+		request.setChoiceKey("AGREE");
+		voteService.submitVote(proposalId, voter, request);
+
+		var result = voteService.getResultForVoter(proposalId, voter);
+
+		assertThat(result.totalVotedHouseholds()).isEqualTo(1);
+		assertThat(result.votedAt()).isNotNull();
 	}
 }

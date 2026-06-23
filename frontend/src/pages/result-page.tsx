@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, XCircle, Scale, RefreshCw } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, Scale, RefreshCw, Vote } from 'lucide-react'
 import { toast } from 'sonner'
 import { SiteHeader } from '@/components/site-header'
 import { StatusBadge, TypeBadge } from '@/components/status-badge'
@@ -8,7 +8,7 @@ import { ResultBars } from '@/components/result-bars'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { api } from '@/lib/api'
-import { pct } from '@/lib/labels'
+import { pct, thresholdBaseLabel, thresholdLabel } from '@/lib/labels'
 import { usePolling } from '@/hooks/use-polling'
 import type { ProposalResult } from '@/lib/types'
 
@@ -119,7 +119,7 @@ export function ResultPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Scale className="size-4 text-primary" aria-hidden="true" />
-                法規門檻計算
+                通過門檻計算
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
@@ -133,11 +133,13 @@ export function ResultPage() {
                   <p className="text-xs text-muted-foreground">同意表決權數</p>
                   <p className="mt-1 text-xl font-black text-foreground">
                     {Number(
-                      result.options.find((o) => o.choice === 'AGREE')?.weight ?? 0,
+                      result.options
+                        .filter((o) => o.choiceKey === 'AGREE' || o.label.includes('同意'))
+                        .reduce((sum, o) => sum + o.weight, 0),
                     ).toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    / 全社區 {Number(result.totalCommunityWeight).toLocaleString()} 坪
+                    / 基準 {Number(result.thresholdWeight).toLocaleString()} 坪
                   </p>
                 </div>
               </div>
@@ -146,32 +148,58 @@ export function ResultPage() {
 
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">同意比例（人數／全社區）</span>
+                  <span className="text-muted-foreground">
+                    同意比例（人數／{thresholdBaseLabel(result.thresholdBase)}）
+                  </span>
                   <span className="font-medium text-foreground">{pct(result.agreeHouseholdRatio)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">同意比例（區分所有權／全社區）</span>
+                  <span className="text-muted-foreground">
+                    同意比例（權數／{thresholdBaseLabel(result.thresholdBase)}）
+                  </span>
                   <span className="font-medium text-foreground">{pct(result.agreeWeightRatio)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">門檻要求</span>
+                  <span className="font-medium text-foreground">
+                    {thresholdLabel(result.passThresholdNumerator, result.passThresholdDenominator)}
+                  </span>
                 </div>
               </div>
 
-              <div
-                className={`flex items-center gap-3 rounded-lg p-3 ${
-                  result.passed ? 'bg-chart-3/10 text-chart-3' : 'bg-chart-5/10 text-chart-5'
-                }`}
-              >
-                {result.passed ? (
-                  <CheckCircle2 className="size-6 shrink-0" aria-hidden="true" />
-                ) : (
-                  <XCircle className="size-6 shrink-0" aria-hidden="true" />
-                )}
-                <div>
-                  <p className="text-sm font-bold">{result.passed ? '本提案已通過' : '本提案未通過'}</p>
-                  <p className="text-xs opacity-80">
-                    依《公寓大廈管理條例》需同意人數與區分所有權比例均超過全社區 50%
-                  </p>
+              {result.status === 'ACTIVE' ? (
+                <div className="flex items-center gap-3 rounded-lg bg-primary/10 p-3 text-primary">
+                  <Vote className="size-6 shrink-0" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-bold">投票進行中</p>
+                    <p className="text-xs opacity-80">
+                      投票結束後將依門檻判定是否通過（
+                      {thresholdLabel(result.passThresholdNumerator, result.passThresholdDenominator)}／
+                      {thresholdBaseLabel(result.thresholdBase)}）
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div
+                  className={`flex items-center gap-3 rounded-lg p-3 ${
+                    result.passed ? 'bg-chart-3/10 text-chart-3' : 'bg-chart-5/10 text-chart-5'
+                  }`}
+                >
+                  {result.passed ? (
+                    <CheckCircle2 className="size-6 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <XCircle className="size-6 shrink-0" aria-hidden="true" />
+                  )}
+                  <div>
+                    <p className="text-sm font-bold">{result.passed ? '本提案已通過' : '本提案未通過'}</p>
+                    <p className="text-xs opacity-80">
+                      通過門檻：同意票之人數與權數比例均須達{' '}
+                      {thresholdLabel(result.passThresholdNumerator, result.passThresholdDenominator)}（
+                      {thresholdBaseLabel(result.thresholdBase)}）
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

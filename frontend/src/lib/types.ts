@@ -1,7 +1,15 @@
 export type ProposalStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ENDED'
 export type ProposalType = 'GENERAL' | 'EXTRAORDINARY'
-export type VoteChoice = 'AGREE' | 'DISAGREE' | 'ABSTAIN'
+export type ThresholdBase = 'COMMUNITY' | 'ATTENDED'
 export type BuildingType = 'A' | 'B' | 'SHOP'
+
+export interface VoteOptionDef {
+  key: string
+  label: string
+  description: string | null
+  sortOrder: number
+  passOption: boolean
+}
 
 export interface QrPreview {
   ownerName: string
@@ -40,10 +48,15 @@ export interface ProposalSummary {
   sortOrder: number
   hasVoted: boolean
   createdAt: string
+  voteOptions: VoteOptionDef[]
+  passThresholdNumerator: number
+  passThresholdDenominator: number
+  thresholdBase: ThresholdBase
+  allowRevote: boolean
 }
 
 export interface VoteOptionResult {
-  choice: VoteChoice
+  choiceKey: string
   label: string
   votes: number
   weight: number
@@ -63,6 +76,11 @@ export interface ProposalResult {
   totalVotedWeight: number
   totalCommunityHouseholds: number
   totalCommunityWeight: number
+  thresholdHouseholds: number
+  thresholdWeight: number
+  passThresholdNumerator: number
+  passThresholdDenominator: number
+  thresholdBase: ThresholdBase
   agreeHouseholdRatio: number
   agreeWeightRatio: number
   passed: boolean

@@ -1,11 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Clock, CheckCircle2, Vote, LogOut, XCircle } from 'lucide-react'
+import {
+  ChevronRight,
+  Clock,
+  CheckCircle2,
+  Vote,
+  LogOut,
+  XCircle,
+  Search,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { SiteHeader } from '@/components/site-header'
 import { StatusBadge, TypeBadge } from '@/components/status-badge'
+import { VoterInfoCard } from '@/components/voter-info-card'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { api } from '@/lib/api'
 import { formatDateTime } from '@/lib/labels'
 import { useAuth } from '@/context/auth-context'
@@ -27,11 +37,22 @@ async function loadEndedResults(ended: ProposalSummary[]) {
   return results
 }
 
+function matchesSearch(p: ProposalSummary, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return (
+    p.title.toLowerCase().includes(q) ||
+    p.proposalNumber.toLowerCase().includes(q) ||
+    p.content.toLowerCase().includes(q)
+  )
+}
+
 export function ProposalsPage() {
   const { session, logout } = useAuth()
   const [proposals, setProposals] = useState<ProposalSummary[]>([])
   const [endedResults, setEndedResults] = useState<Record<number, ProposalResult>>({})
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const refresh = useCallback(async (silent = false) => {
     try {
@@ -56,12 +77,15 @@ export function ProposalsPage() {
     void refresh()
   }, [refresh])
 
-  usePolling(() => refresh(true))
+  const hasActive = proposals.some((p) => p.status === 'ACTIVE')
+  usePolling(() => refresh(true), 5000, hasActive)
 
-  const visible = proposals.filter(
-    (p) => p.status === 'ACTIVE' || p.status === 'SCHEDULED' || p.status === 'ENDED',
+  const filtered = useMemo(
+    () => proposals.filter((p) => matchesSearch(p, searchQuery)),
+    [proposals, searchQuery],
   )
-  const activeCount = visible.filter((p) => p.status === 'ACTIVE').length
+
+  const activeCount = proposals.filter((p) => p.status === 'ACTIVE').length
 
   async function handleLogout() {
     await logout()
@@ -73,26 +97,47 @@ export function ProposalsPage() {
       <SiteHeader subtitle="提案列表" />
       <main className="mx-auto w-full max-w-md px-4 py-6">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-foreground">提案投票</h1>
-            <p className="text-sm text-muted-foreground">
-              您好，{session?.name}（{session?.unitShortName}）
-            </p>
-          </div>
+          <h1 className="text-xl font-bold text-foreground">提案投票</h1>
           <div className="rounded-lg bg-primary/10 px-3 py-2 text-center">
             <p className="text-lg font-black leading-none text-primary">{activeCount}</p>
             <p className="mt-0.5 text-[11px] text-primary/70">進行中</p>
           </div>
         </div>
 
+        {session && (
+          <div className="mt-4">
+            <VoterInfoCard session={session} />
+          </div>
+        )}
+
+        <div className="relative mt-4">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜尋提案編號、標題或內容…"
+            className="pl-9"
+            aria-label="搜尋提案"
+          />
+        </div>
+
         {loading ? (
           <p className="mt-8 text-center text-sm text-muted-foreground">載入中…</p>
-        ) : visible.length === 0 ? (
-          <p className="mt-8 text-center text-sm text-muted-foreground">目前沒有可投票的提案</p>
+        ) : proposals.length === 0 ? (
+          <p className="mt-8 text-center text-sm text-muted-foreground">目前沒有提案</p>
+        ) : filtered.length === 0 ? (
+          <p className="mt-8 text-center text-sm text-muted-foreground">找不到符合的提案</p>
         ) : (
-          <ul className="mt-5 flex flex-col gap-3">
-            {visible.map((p) => {
-              const canVote = p.status === 'ACTIVE' && !p.hasVoted
+          <ul className="mt-4 flex flex-col gap-3">
+            {filtered.map((p) => {
+              const canVote = p.status === 'ACTIVE' && (!p.hasVoted || p.allowRevote)
+              const canRevote = p.status === 'ACTIVE' && p.hasVoted && p.allowRevote
+              const canViewResult =
+                p.status === 'ENDED' || p.status === 'ACTIVE' || p.status === 'SCHEDULED'
               const endedResult = p.status === 'ENDED' ? endedResults[p.id] : null
               const showPassStatus = endedResult && endedResult.totalVotedHouseholds > 0
               return (
@@ -142,21 +187,30 @@ export function ProposalsPage() {
                         {formatDateTime(p.startTime)} ~ {formatDateTime(p.endTime)}
                       </div>
 
-                      <div className="mt-3 flex gap-2">
-                        {canVote ? (
-                          <Link to={`/proposals/${p.id}/vote`} className="flex-1">
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {canVote && (
+                          <Link to={`/proposals/${p.id}/vote`} className="min-w-0 flex-1">
                             <Button className="w-full">
                               <Vote className="size-4" aria-hidden="true" />
-                              前往投票
+                              {canRevote ? '更改投票' : '前往投票'}
                             </Button>
                           </Link>
-                        ) : (
-                          <Link to={`/proposals/${p.id}/result`} className="flex-1">
+                        )}
+                        {canViewResult && (
+                          <Link
+                            to={`/proposals/${p.id}/result`}
+                            className={cn('min-w-0', canVote ? 'flex-1' : 'w-full flex-1')}
+                          >
                             <Button variant="outline" className="w-full">
-                              查看結果
+                              {p.status === 'ACTIVE' ? '查看即時結果' : '查看結果'}
                               <ChevronRight className="size-4" aria-hidden="true" />
                             </Button>
                           </Link>
+                        )}
+                        {p.status === 'DRAFT' && (
+                          <Button variant="outline" disabled className="w-full flex-1">
+                            尚未公告
+                          </Button>
                         )}
                       </div>
                     </CardContent>
@@ -169,7 +223,8 @@ export function ProposalsPage() {
 
         <div className="mt-6 flex flex-col items-center gap-2">
           <p className="text-center text-xs text-muted-foreground">
-            僅顯示進行中與已公告之提案，避免誤投 · 每 5 秒自動更新
+            顯示全部已公告提案 · 共 {proposals.length} 筆
+            {hasActive && ' · 進行中提案每 5 秒自動更新'}
           </p>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="size-4" aria-hidden="true" />

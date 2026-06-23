@@ -1,7 +1,6 @@
 package com.ben.com.backend.repository;
 
 import com.ben.com.backend.domain.entity.VoteRecord;
-import com.ben.com.backend.domain.enums.VoteChoice;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -18,18 +17,38 @@ public interface VoteRecordRepository extends JpaRepository<VoteRecord, Long> {
 	Optional<VoteRecord> findByProposalIdAndOwnerId(Long proposalId, Long ownerId);
 
 	@Query("""
-			SELECT COUNT(v) FROM VoteRecord v
-			WHERE v.proposal.id = :proposalId AND v.choice = :choice
+			SELECT v.proposal.id FROM VoteRecord v
+			WHERE v.owner.id = :ownerId AND v.proposal.id IN :proposalIds
 			""")
-	long countByProposalIdAndChoice(@Param("proposalId") Long proposalId, @Param("choice") VoteChoice choice);
+	List<Long> findVotedProposalIds(
+			@Param("ownerId") Long ownerId,
+			@Param("proposalIds") Collection<Long> proposalIds
+	);
+
+	@Query("""
+			SELECT v.choiceKey, COUNT(v), COALESCE(SUM(v.voteWeight), 0)
+			FROM VoteRecord v
+			WHERE v.proposal.id = :proposalId
+			GROUP BY v.choiceKey
+			""")
+	List<Object[]> aggregateByProposalId(@Param("proposalId") Long proposalId);
+
+	@Query("""
+			SELECT COUNT(v) FROM VoteRecord v
+			WHERE v.proposal.id = :proposalId AND v.choiceKey IN :passKeys
+			""")
+	long countPassVotes(
+			@Param("proposalId") Long proposalId,
+			@Param("passKeys") Collection<String> passKeys
+	);
 
 	@Query("""
 			SELECT COALESCE(SUM(v.voteWeight), 0) FROM VoteRecord v
-			WHERE v.proposal.id = :proposalId AND v.choice = :choice
+			WHERE v.proposal.id = :proposalId AND v.choiceKey IN :passKeys
 			""")
-	java.math.BigDecimal sumWeightByProposalIdAndChoice(
+	java.math.BigDecimal sumPassVoteWeight(
 			@Param("proposalId") Long proposalId,
-			@Param("choice") VoteChoice choice
+			@Param("passKeys") Collection<String> passKeys
 	);
 
 	long countByProposalId(Long proposalId);

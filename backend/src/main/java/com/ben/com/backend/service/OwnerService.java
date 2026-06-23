@@ -8,6 +8,7 @@ import com.ben.com.backend.repository.VoteRecordRepository;
 import com.ben.com.backend.util.ShortNameNormalizer;
 import com.ben.com.backend.util.UnitShortNameParser;
 import com.ben.com.backend.web.dto.AuthCodeRegeneratedResponse;
+import com.ben.com.backend.web.dto.BatchAttendanceRequest;
 import com.ben.com.backend.web.dto.CreateOwnerRequest;
 import com.ben.com.backend.web.dto.CreateUnitRequest;
 import com.ben.com.backend.web.dto.OwnerCreatedResponse;
@@ -105,6 +106,32 @@ public class OwnerService {
 		owner.setAttended(request.isAttended());
 		unitService.updateFromOwnerRequest(communityId, owner.getUnit(), request);
 		return OwnerResponse.from(owner);
+	}
+
+	public OwnerResponse updateAttendance(Long communityId, Long id, boolean attended) {
+		var owner = findOwnerInCommunity(communityId, id);
+		owner.setAttended(attended);
+		return OwnerResponse.from(owner);
+	}
+
+	public int batchUpdateAttendance(Long communityId, BatchAttendanceRequest request) {
+		if (request.ownerIds() == null || request.ownerIds().isEmpty()) {
+			return 0;
+		}
+		var distinctIds = request.ownerIds().stream().distinct().toList();
+		var owners = ownerRepository.findAllById(distinctIds);
+		if (owners.size() != distinctIds.size()) {
+			throw new ResourceNotFoundException("部分所有權人不存在");
+		}
+		int updated = 0;
+		for (var owner : owners) {
+			if (!owner.getUnit().getCommunity().getId().equals(communityId)) {
+				throw new ResourceNotFoundException("所有權人不屬於此社區");
+			}
+			owner.setAttended(request.attended());
+			updated++;
+		}
+		return updated;
 	}
 
 	public void delete(Long communityId, Long id) {

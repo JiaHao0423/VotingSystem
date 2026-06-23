@@ -49,4 +49,17 @@ public interface OwnerRepository extends JpaRepository<Owner, Long> {
 			@Param("communityId") Long communityId,
 			@Param("shortName") String shortName
 	);
+
+	@Query("""
+			SELECT COUNT(o) FROM Owner o
+			WHERE o.unit.community.id = :communityId AND o.attended = true
+			""")
+	long countAttendedByCommunityId(@Param("communityId") Long communityId);
+
+	@Query("""
+			SELECT COALESCE(SUM(u.area), 0) FROM Owner o
+			JOIN o.unit u
+			WHERE u.community.id = :communityId AND o.attended = true
+			""")
+	java.math.BigDecimal sumAttendedAreaByCommunityId(@Param("communityId") Long communityId);
 }

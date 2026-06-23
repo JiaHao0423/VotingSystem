@@ -1,18 +1,15 @@
 package com.ben.com.backend.web.dto;
 
-import com.ben.com.backend.domain.enums.VoteChoice;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
 
+@Getter
 public class SubmitVoteRequest {
 
-	@NotNull(message = "請選擇投票選項")
-	private VoteChoice choice;
+	@NotBlank(message = "請選擇投票選項")
+	private String choiceKey;
 
-	public VoteChoice getChoice() {
-		return choice;
-	}
-
-	public void setChoice(VoteChoice choice) {
-		this.choice = choice;
+	public void setChoiceKey(String choiceKey) {
+		this.choiceKey = choiceKey != null ? choiceKey.trim() : null;
 	}
 }

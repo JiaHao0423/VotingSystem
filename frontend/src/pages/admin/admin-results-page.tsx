@@ -13,28 +13,31 @@ import type { ProposalResult } from '@/lib/types'
 export function AdminResultsPage() {
   const { community } = useAdminAuth()
   const [items, setItems] = useState<{ proposal: AdminProposal; result: ProposalResult | null }[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!community) return
-    adminApi.listProposals(community.id).then(async (proposals) => {
-      const rows = await Promise.all(
-        proposals.map(async (p) => {
-          try {
-            const result = await adminApi.getProposalResult(community.id, p.id)
-            return { proposal: p, result }
-          } catch {
-            return { proposal: p, result: null }
-          }
-        }),
-      )
-      setItems(rows)
-    })
+    Promise.all([adminApi.listProposals(community.id), adminApi.listProposalResults(community.id)])
+      .then(([proposals, results]) => {
+        const resultById = new Map(results.map((r) => [r.id, r]))
+        setItems(
+          proposals.map((p) => ({
+            proposal: p,
+            result: resultById.get(p.id) ?? null,
+          })),
+        )
+      })
+      .finally(() => setLoading(false))
   }, [community])
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">載入中…</p>
+  }
 
   return (
     <div className="mx-auto w-full max-w-5xl">
       <h1 className="text-2xl font-bold text-foreground">投票結果詳情</h1>
-      <p className="mt-1 text-sm text-muted-foreground">查看各提案得票數、得票比例與法規門檻判定</p>
+      <p className="mt-1 text-sm text-muted-foreground">查看各提案得票數、得票比例與通過門檻判定</p>
 
       <div className="mt-6 grid gap-3 md:grid-cols-2">
         {items.map(({ proposal: p, result: r }) => {

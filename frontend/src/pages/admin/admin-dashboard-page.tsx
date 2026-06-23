@@ -21,21 +21,17 @@ export function AdminDashboardPage() {
     Promise.all([
       adminApi.listProposals(community.id),
       adminApi.listOwners(community.id),
-    ]).then(async ([p, o]) => {
+      adminApi.listProposalResults(community.id),
+    ]).then(([p, o, results]) => {
       setProposals(p)
       setOwners(o)
+      const resultById = Object.fromEntries(results.map((r) => [r.id, r]))
       const active = p.filter((x) => x.status === 'ACTIVE')
-      const results: Record<number, ProposalResult> = {}
-      await Promise.all(
-        active.map(async (prop) => {
-          try {
-            results[prop.id] = await adminApi.getProposalResult(community.id, prop.id)
-          } catch {
-            // ignore
-          }
-        }),
-      )
-      setActiveResults(results)
+      const activeMap: Record<number, ProposalResult> = {}
+      for (const prop of active) {
+        if (resultById[prop.id]) activeMap[prop.id] = resultById[prop.id]
+      }
+      setActiveResults(activeMap)
     })
   }, [community])
 

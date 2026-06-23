@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { adminApi } from '@/lib/admin-api'
 import { useAdminAuth } from '@/context/admin-auth-context'
 import { OwnerQrCard } from '@/components/owner-qr-card'
+import { Switch } from '@/components/ui/switch'
 import { buildingTypeLabel } from '@/lib/labels'
 import type { AdminOwner, AdminUnit, UpdateOwnerBody } from '@/lib/admin-types'
 
@@ -96,6 +97,7 @@ export function AdminOwnersPage() {
   } | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [batchDeleting, setBatchDeleting] = useState(false)
+  const [batchAttending, setBatchAttending] = useState(false)
 
   const matchedUnit = useMemo(
     () => findUnitByShortName(units, newUnitShortName),
@@ -266,6 +268,33 @@ export function AdminOwnersPage() {
       reload()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '更新失敗')
+    }
+  }
+
+  async function toggleAttendance(owner: AdminOwner, attended: boolean) {
+    if (!community) return
+    try {
+      await adminApi.updateOwnerAttendance(community.id, owner.id, attended)
+      setOwners((prev) => prev.map((o) => (o.id === owner.id ? { ...o, attended } : o)))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '更新出席狀態失敗')
+      reload()
+    }
+  }
+
+  async function batchSetAttendance(attended: boolean) {
+    if (!community || selectedCount === 0) return
+    const ids = [...selectedIds]
+    setBatchAttending(true)
+    try {
+      const res = await adminApi.batchUpdateAttendance(community.id, ids, attended)
+      toast.success(`已更新 ${res.updatedCount} 位所有權人的出席狀態`)
+      clearSelection()
+      reload()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '批次更新失敗')
+    } finally {
+      setBatchAttending(false)
     }
   }
 
@@ -497,8 +526,24 @@ export function AdminOwnersPage() {
           />
         </div>
         {selectedCount > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
             <span className="text-sm font-medium text-foreground">已選 {selectedCount} 位</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={batchAttending}
+              onClick={() => batchSetAttendance(true)}
+            >
+              設為已出席
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={batchAttending}
+              onClick={() => batchSetAttendance(false)}
+            >
+              設為未出席
+            </Button>
             <Button
               variant="destructive"
               size="sm"
@@ -532,6 +577,14 @@ export function AdminOwnersPage() {
                 ) : (
                   <Badge className="shrink-0 bg-muted text-muted-foreground">未出席</Badge>
                 )}
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">出席狀態</span>
+                <Switch
+                  checked={o.attended}
+                  onCheckedChange={(checked) => toggleAttendance(o, checked)}
+                  aria-label={`${o.name} 出席狀態`}
+                />
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span>坪數 {o.area != null ? o.area : '—'}</span>
@@ -620,12 +673,12 @@ export function AdminOwnersPage() {
                     {formatRatio(o.ownershipRatio)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{o.phone || '—'}</TableCell>
-                  <TableCell className="text-center">
-                    {o.attended ? (
-                      <Badge className="border-chart-3/30 bg-chart-3/10 text-chart-3">已出席</Badge>
-                    ) : (
-                      <Badge className="bg-muted text-muted-foreground">未出席</Badge>
-                    )}
+                  <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                    <Switch
+                      checked={o.attended}
+                      onCheckedChange={(checked) => toggleAttendance(o, checked)}
+                      aria-label={`${o.name} 出席狀態`}
+                    />
                   </TableCell>
                   <TableCell
                     className="sticky right-0 bg-card text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]"
@@ -829,18 +882,6 @@ export function AdminOwnersPage() {
                       })
                     }
                   />
-                </Field>
-                <Field label="出席狀態">
-                  <label className="flex h-9 items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={editForm.attended}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, attended: e.target.checked })
-                      }
-                    />
-                    已出席
-                  </label>
                 </Field>
               </div>
               <div className="flex justify-end gap-2">

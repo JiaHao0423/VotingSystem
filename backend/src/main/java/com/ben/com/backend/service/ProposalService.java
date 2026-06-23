@@ -2,19 +2,29 @@ package com.ben.com.backend.service;
 
 import com.ben.com.backend.domain.entity.Proposal;
 import com.ben.com.backend.domain.enums.ProposalStatus;
+import com.ben.com.backend.domain.model.VoteOptionItem;
 import com.ben.com.backend.exception.ConflictException;
 import com.ben.com.backend.exception.ResourceNotFoundException;
+import com.ben.com.backend.repository.OwnerRepository;
 import com.ben.com.backend.repository.ProposalRepository;
 import com.ben.com.backend.repository.UnitRepository;
 import com.ben.com.backend.repository.VoteRecordRepository;
+import com.ben.com.backend.util.VoteOptionDefaults;
 import com.ben.com.backend.web.dto.AdminProposalResultResponse;
 import com.ben.com.backend.web.dto.CreateProposalRequest;
 import com.ben.com.backend.web.dto.ProposalResponse;
 import com.ben.com.backend.web.dto.ProposalResultResponse;
 import com.ben.com.backend.web.dto.UpdateProposalRequest;
+import com.ben.com.backend.web.dto.VoteOptionRequest;
 import com.ben.com.backend.web.dto.VoteRecordResponse;
 import jakarta.persistence.EntityManager;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +35,7 @@ public class ProposalService {
 	private final ProposalRepository proposalRepository;
 	private final VoteRecordRepository voteRecordRepository;
 	private final UnitRepository unitRepository;
+	private final OwnerRepository ownerRepository;
 	private final CommunityService communityService;
 	private final MeetingService meetingService;
 	private final ProposalLifecycleService proposalLifecycleService;
@@ -34,6 +45,7 @@ public class ProposalService {
 			ProposalRepository proposalRepository,
 			VoteRecordRepository voteRecordRepository,
 			UnitRepository unitRepository,
+			OwnerRepository ownerRepository,
 			CommunityService communityService,
 			MeetingService meetingService,
 			ProposalLifecycleService proposalLifecycleService,
@@ -42,6 +54,7 @@ public class ProposalService {
 		this.proposalRepository = proposalRepository;
 		this.voteRecordRepository = voteRecordRepository;
 		this.unitRepository = unitRepository;
+		this.ownerRepository = ownerRepository;
 		this.communityService = communityService;
 		this.meetingService = meetingService;
 		this.proposalLifecycleService = proposalLifecycleService;
@@ -58,12 +71,13 @@ public class ProposalService {
 
 	public List<ProposalResponse> listForVoter(Long communityId, Long ownerId) {
 		syncExpiredStatuses(communityId);
-		var visibleStatuses = List.of(ProposalStatus.ACTIVE, ProposalStatus.SCHEDULED, ProposalStatus.ENDED);
-		return proposalRepository.findVisibleByCommunityIdAndStatusIn(communityId, visibleStatuses).stream()
-				.map(proposal -> ProposalResponse.from(
-						proposal,
-						voteRecordRepository.existsByProposalIdAndOwnerId(proposal.getId(), ownerId)
-				))
+		var proposals = proposalRepository.findVisibleByCommunityId(communityId);
+		var proposalIds = proposals.stream().map(Proposal::getId).toList();
+		Set<Long> votedIds = proposalIds.isEmpty()
+				? Set.of()
+				: new HashSet<>(voteRecordRepository.findVotedProposalIds(ownerId, proposalIds));
+		return proposals.stream()
+				.map(proposal -> ProposalResponse.from(proposal, votedIds.contains(proposal.getId())))
 				.toList();
 	}
 
@@ -76,7 +90,10 @@ public class ProposalService {
 		syncExpiredStatuses(communityId);
 		var proposal = findProposalInCommunity(communityId, proposalId);
 		ensureVoterVisible(proposal);
-		return ProposalResponse.from(proposal, voteRecordRepository.existsByProposalIdAndOwnerId(proposalId, ownerId));
+		return ProposalResponse.from(
+				proposal,
+				voteRecordRepository.existsByProposalIdAndOwnerId(proposalId, ownerId)
+		);
 	}
 
 	public ProposalResponse create(Long communityId, CreateProposalRequest request) {
@@ -88,7 +105,8 @@ public class ProposalService {
 				request.getContent(),
 				request.getType()
 		);
-		applyFields(proposal, request.getStartTime(), request.getEndTime(), request.isVisible(), request.getSortOrder());
+		applyFields(proposal, request);
+		proposal.setSortOrder(proposalRepository.maxSortOrderByCommunityId(communityId) + 1);
 		proposalRepository.save(proposal);
 		return ProposalResponse.from(proposal, false);
 	}
@@ -99,7 +117,7 @@ public class ProposalService {
 		proposal.setTitle(request.getTitle());
 		proposal.setContent(request.getContent());
 		proposal.setType(request.getType());
-		applyFields(proposal, request.getStartTime(), request.getEndTime(), request.isVisible(), request.getSortOrder());
+		applyFields(proposal, request);
 		return ProposalResponse.from(proposal, false);
 	}
 
@@ -110,55 +128,85 @@ public class ProposalService {
 	}
 
 	public ProposalResponse start(Long communityId, Long proposalId) {
+		return setVotingActive(communityId, proposalId, true);
+	}
+
+	public ProposalResponse stop(Long communityId, Long proposalId) {
+		return setVotingActive(communityId, proposalId, false);
+	}
+
+	public ProposalResponse setVotingActive(Long communityId, Long proposalId, boolean active) {
 		syncExpiredStatuses(communityId);
 		var proposal = findProposalInCommunity(communityId, proposalId);
-		if (proposal.getStatus() == ProposalStatus.ACTIVE) {
-			return ProposalResponse.from(proposal, false);
-		}
-		if (proposal.getStatus() == ProposalStatus.ENDED) {
-			throw new ConflictException("已結束的提案無法重新啟動");
-		}
-		proposal.setStatus(ProposalStatus.ACTIVE);
-		proposal.setVisible(true);
-		if (proposal.getStartTime() == null) {
-			proposal.setStartTime(java.time.Instant.now());
+		var now = Instant.now();
+		if (active) {
+			if (proposal.getStatus() == ProposalStatus.ACTIVE) {
+				return ProposalResponse.from(proposal, false);
+			}
+			// Admin manual start: clear expired end time so lifecycle sync won't immediately end it.
+			if (proposal.getEndTime() != null && !proposal.getEndTime().isAfter(now)) {
+				proposal.setEndTime(null);
+			}
+			proposal.setStatus(ProposalStatus.ACTIVE);
+			proposal.setVisible(true);
+			proposal.setStartTime(now);
+		} else {
+			if (proposal.getStatus() != ProposalStatus.ACTIVE) {
+				if (proposal.getStatus() == ProposalStatus.ENDED) {
+					return ProposalResponse.from(proposal, false);
+				}
+				throw new ConflictException("僅進行中的提案可以終止投票");
+			}
+			proposal.setStatus(ProposalStatus.ENDED);
+			if (proposal.getEndTime() == null) {
+				proposal.setEndTime(now);
+			}
 		}
 		return ProposalResponse.from(proposal, false);
 	}
 
-	public ProposalResponse stop(Long communityId, Long proposalId) {
-		var proposal = findProposalInCommunity(communityId, proposalId);
-		if (proposal.getStatus() != ProposalStatus.ACTIVE) {
-			throw new ConflictException("僅進行中的提案可以終止投票");
+	public void reorder(Long communityId, List<Long> orderedIds) {
+		communityService.getById(communityId);
+		var proposals = proposalRepository.findByCommunityIdWithMeeting(communityId);
+		Map<Long, Proposal> byId = proposals.stream().collect(Collectors.toMap(Proposal::getId, p -> p));
+		if (orderedIds.size() != proposals.size() || !byId.keySet().containsAll(orderedIds)) {
+			throw new ConflictException("排序清單必須包含此社區的全部提案");
 		}
-		proposal.setStatus(ProposalStatus.ENDED);
-		if (proposal.getEndTime() == null) {
-			proposal.setEndTime(java.time.Instant.now());
+		for (int i = 0; i < orderedIds.size(); i++) {
+			byId.get(orderedIds.get(i)).setSortOrder(i);
 		}
-		return ProposalResponse.from(proposal, false);
+	}
+
+	public void resetVotes(Long communityId, Long proposalId) {
+		findProposalInCommunity(communityId, proposalId);
+		voteRecordRepository.deleteByProposal_Id(proposalId);
 	}
 
 	public ProposalResultResponse getResult(Long communityId, Long proposalId) {
 		syncExpiredStatuses(communityId);
 		var proposal = findProposalInCommunity(communityId, proposalId);
-		var community = proposal.getMeeting().getCommunity();
-		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
-		return ProposalResultCalculator.compute(proposal, community, totalCommunityArea, voteRecordRepository);
+		return computeResult(proposal);
+	}
+
+	public List<ProposalResultResponse> listResults(Long communityId) {
+		syncExpiredStatuses(communityId);
+		return proposalRepository.findByCommunityIdWithMeeting(communityId).stream()
+				.map(this::computeResult)
+				.toList();
 	}
 
 	public AdminProposalResultResponse getAdminResult(Long communityId, Long proposalId) {
 		syncExpiredStatuses(communityId);
 		var proposal = findProposalInCommunity(communityId, proposalId);
-		var community = proposal.getMeeting().getCommunity();
-		var totalCommunityArea = unitRepository.sumAreaByCommunityId(community.getId());
-		var summary = ProposalResultCalculator.compute(proposal, community, totalCommunityArea, voteRecordRepository);
+		var summary = computeResult(proposal);
+		var options = VoteOptionDefaults.normalize(proposal.getVoteOptions());
 		var voters = voteRecordRepository.findByProposalIdWithOwner(proposalId).stream()
 				.map(record -> new VoteRecordResponse(
 						record.getOwner().getId(),
 						record.getOwner().getName(),
 						record.getOwner().getUnit().getShortName(),
-						record.getChoice(),
-						ProposalResultCalculator.label(record.getChoice()),
+						record.getChoiceKey(),
+						VoteOptionDefaults.labelFor(options, record.getChoiceKey()),
 						record.getVotedAt()
 				))
 				.toList();
@@ -178,6 +226,22 @@ public class ProposalService {
 		return proposal;
 	}
 
+	private ProposalResultResponse computeResult(Proposal proposal) {
+		var community = proposal.getMeeting().getCommunity();
+		var communityId = community.getId();
+		var totalCommunityArea = unitRepository.sumAreaByCommunityId(communityId);
+		var attendedHouseholds = ownerRepository.countAttendedByCommunityId(communityId);
+		var attendedWeight = ownerRepository.sumAttendedAreaByCommunityId(communityId);
+		return ProposalResultCalculator.compute(
+				proposal,
+				community,
+				totalCommunityArea,
+				attendedHouseholds,
+				attendedWeight,
+				voteRecordRepository
+		);
+	}
+
 	private void ensureVoterVisible(Proposal proposal) {
 		if (!proposal.isVisible()) {
 			throw new ResourceNotFoundException("找不到提案：" + proposal.getId());
@@ -187,21 +251,44 @@ public class ProposalService {
 		}
 	}
 
-	private void applyFields(Proposal proposal, java.time.Instant startTime, java.time.Instant endTime, boolean visible, int sortOrder) {
-		proposal.setStartTime(startTime);
-		proposal.setEndTime(endTime);
-		proposal.setVisible(visible);
-		proposal.setSortOrder(sortOrder);
+	private void applyFields(Proposal proposal, CreateProposalRequest request) {
+		proposal.setStartTime(request.getStartTime());
+		proposal.setEndTime(request.getEndTime());
+		proposal.setVisible(request.isVisible());
+		proposal.setVoteOptions(resolveVoteOptions(request.getVoteOptions()));
+		proposal.setPassThresholdNumerator(Math.max(1, request.getPassThresholdNumerator()));
+		proposal.setPassThresholdDenominator(Math.max(1, request.getPassThresholdDenominator()));
+		proposal.setThresholdBase(request.getThresholdBase());
+		proposal.setAllowRevote(request.isAllowRevote());
+	}
+
+	private void applyFields(Proposal proposal, UpdateProposalRequest request) {
+		proposal.setStartTime(request.getStartTime());
+		proposal.setEndTime(request.getEndTime());
+		proposal.setVisible(request.isVisible());
+		proposal.setVoteOptions(resolveVoteOptions(request.getVoteOptions()));
+		proposal.setPassThresholdNumerator(Math.max(1, request.getPassThresholdNumerator()));
+		proposal.setPassThresholdDenominator(Math.max(1, request.getPassThresholdDenominator()));
+		proposal.setThresholdBase(request.getThresholdBase());
+		proposal.setAllowRevote(request.isAllowRevote());
+	}
+
+	private List<VoteOptionItem> resolveVoteOptions(List<VoteOptionRequest> requests) {
+		if (requests == null || requests.isEmpty()) {
+			return new ArrayList<>(VoteOptionDefaults.standard());
+		}
+		var items = new ArrayList<VoteOptionItem>();
+		for (int i = 0; i < requests.size(); i++) {
+			items.add(requests.get(i).toItem(i));
+		}
+		return VoteOptionDefaults.normalize(items);
 	}
 
 	public void syncExpiredProposalsForCommunity(Long communityId) {
-		entityManager.flush();
-		proposalLifecycleService.syncExpiredProposals(communityId);
-		entityManager.clear();
+		syncExpiredStatuses(communityId);
 	}
 
 	private void syncExpiredStatuses(Long communityId) {
-		entityManager.flush();
 		proposalLifecycleService.syncExpiredProposals(communityId);
 		entityManager.clear();
 	}

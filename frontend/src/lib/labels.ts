@@ -1,4 +1,4 @@
-import type { ProposalStatus, ProposalType, VoteChoice } from './types'
+import type { ProposalStatus, ProposalType, ThresholdBase } from './types'
 
 export function statusLabel(status: ProposalStatus): string {
   const map: Record<ProposalStatus, string> = {
@@ -14,13 +14,12 @@ export function typeLabel(type: ProposalType): string {
   return type === 'EXTRAORDINARY' ? '臨時提案' : '一般提案'
 }
 
-export function choiceLabel(choice: VoteChoice): string {
-  const map: Record<VoteChoice, string> = {
-    AGREE: '同意',
-    DISAGREE: '反對',
-    ABSTAIN: '棄權',
-  }
-  return map[choice]
+export function thresholdBaseLabel(base: ThresholdBase): string {
+  return base === 'ATTENDED' ? '出席人數' : '全社區'
+}
+
+export function thresholdLabel(numerator: number, denominator: number): string {
+  return `${numerator}/${denominator}`
 }
 
 export function formatDateTime(iso: string | null): string {
@@ -40,10 +39,10 @@ export function pct(ratio: number): string {
   return `${(ratio * 100).toFixed(1)}%`
 }
 
-export const VOTE_OPTIONS: { choice: VoteChoice; label: string }[] = [
-  { choice: 'AGREE', label: '同意' },
-  { choice: 'DISAGREE', label: '反對' },
-  { choice: 'ABSTAIN', label: '棄權' },
+export const DEFAULT_VOTE_OPTIONS = [
+  { label: '同意', description: '', passOption: true },
+  { label: '反對', description: '', passOption: false },
+  { label: '棄權', description: '', passOption: false },
 ]
 
 export const SYSTEM_NAME = '社區電子投票系統'
@@ -55,4 +54,12 @@ export function buildingTypeLabel(type: string): string {
     SHOP: '店面',
   }
   return map[type] ?? type
+}
+
+export function formatOwnershipRatio(ratio: number | null | undefined): string {
+  if (ratio == null) return '—'
+  return `${Number(ratio).toLocaleString('zh-TW', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  })}%`
 }

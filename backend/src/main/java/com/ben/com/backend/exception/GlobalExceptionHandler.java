@@ -3,6 +3,9 @@ package com.ben.com.backend.exception;
 import java.time.Instant;
 import java.util.Map;
 import org.jspecify.annotations.NullMarked;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -13,6 +16,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @NullMarked
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	@ExceptionHandler(UnauthorizedException.class)
 	public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
@@ -53,6 +58,17 @@ public class GlobalExceptionHandler {
 				"error", "Validation failed",
 				"fields", fieldErrors
 		));
+	}
+
+	@ExceptionHandler(DataAccessException.class)
+	public ResponseEntity<Map<String, Object>> handleDataAccess(DataAccessException ex) {
+		log.debug("Database access error", ex);
+		return error(HttpStatus.INTERNAL_SERVER_ERROR, "資料庫操作失敗，請稍後再試");
+	}
+
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
+		return error(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage() != null ? ex.getMessage() : "伺服器發生錯誤");
 	}
 
 	private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {

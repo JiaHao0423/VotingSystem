@@ -190,6 +190,37 @@ export const adminApi = {
     }).then((r) => handleResponse<AdminProposal>(r))
   },
 
+  toggleProposalVoting(
+    communityId: number,
+    proposalId: number,
+    active: boolean,
+  ): Promise<AdminProposal> {
+    return adminFetch(`/api/admin/communities/${communityId}/proposals/${proposalId}/voting`, {
+      method: 'PUT',
+      body: JSON.stringify({ active }),
+    }).then((r) => handleResponse<AdminProposal>(r))
+  },
+
+  reorderProposals(communityId: number, orderedIds: number[]): Promise<void> {
+    return adminFetch(`/api/admin/communities/${communityId}/proposals/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ orderedIds }),
+    }).then((r) => handleResponse<void>(r))
+  },
+
+  resetProposalVotes(communityId: number, proposalId: number): Promise<void> {
+    return adminFetch(`/api/admin/communities/${communityId}/proposals/${proposalId}/reset-votes`, {
+      method: 'POST',
+      body: '{}',
+    }).then((r) => handleResponse<void>(r))
+  },
+
+  listProposalResults(communityId: number): Promise<ProposalResult[]> {
+    return adminFetch(`/api/admin/communities/${communityId}/proposals/results`).then((r) =>
+      handleResponse<ProposalResult[]>(r),
+    )
+  },
+
   getProposalResult(communityId: number, proposalId: number): Promise<ProposalResult> {
     return adminFetch(`/api/admin/communities/${communityId}/proposals/${proposalId}/results`).then(
       (r) => handleResponse<ProposalResult>(r),
@@ -288,6 +319,28 @@ export const adminApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ownerIds }),
     }).then((r) => handleResponse<{ deletedCount: number }>(r))
+  },
+
+  updateOwnerAttendance(
+    communityId: number,
+    ownerId: number,
+    attended: boolean,
+  ): Promise<AdminOwner> {
+    return adminFetch(`/api/admin/communities/${communityId}/owners/${ownerId}/attendance`, {
+      method: 'POST',
+      body: JSON.stringify({ attended }),
+    }).then((r) => handleResponse<AdminOwner>(r))
+  },
+
+  batchUpdateAttendance(
+    communityId: number,
+    ownerIds: number[],
+    attended: boolean,
+  ): Promise<{ updatedCount: number }> {
+    return adminFetch(`/api/admin/communities/${communityId}/owners/batch-attendance`, {
+      method: 'POST',
+      body: JSON.stringify({ ownerIds, attended }),
+    }).then((r) => handleResponse<{ updatedCount: number }>(r))
   },
 
   importUnits(

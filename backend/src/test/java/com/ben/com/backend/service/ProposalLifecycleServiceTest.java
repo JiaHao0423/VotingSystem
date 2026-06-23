@@ -6,6 +6,7 @@ import com.ben.com.backend.domain.entity.Proposal;
 import com.ben.com.backend.domain.enums.ProposalStatus;
 import com.ben.com.backend.domain.enums.ProposalType;
 import com.ben.com.backend.web.dto.CreateProposalRequest;
+import com.ben.com.backend.web.dto.UpdateProposalRequest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,40 @@ class ProposalLifecycleServiceTest {
 	private CommunityService communityService;
 
 	@Test
+	void adminCanRestartVotingAfterAutomaticEnd() {
+		var community = communityService.getDefaultCommunity();
+		var createRequest = new CreateProposalRequest();
+		createRequest.setProposalNumber("重啟案");
+		createRequest.setTitle("測試重啟投票");
+		createRequest.setContent("內容");
+		createRequest.setType(ProposalType.GENERAL);
+		createRequest.setVisible(true);
+		createRequest.setEndTime(Instant.now().minus(1, ChronoUnit.MINUTES));
+		var proposalId = proposalService.create(community.getId(), createRequest).id();
+
+		proposalService.setVotingActive(community.getId(), proposalId, true);
+
+		var afterStart = proposalService.listForAdmin(community.getId()).stream()
+				.filter(proposal -> proposal.id().equals(proposalId))
+				.findFirst()
+				.orElseThrow();
+		assertThat(afterStart.status()).isEqualTo(ProposalStatus.ACTIVE);
+
+		proposalService.setVotingActive(community.getId(), proposalId, false);
+
+		var afterStop = proposalService.getForAdmin(community.getId(), proposalId);
+		assertThat(afterStop.status()).isEqualTo(ProposalStatus.ENDED);
+
+		proposalService.setVotingActive(community.getId(), proposalId, true);
+
+		var afterRestart = proposalService.listForAdmin(community.getId()).stream()
+				.filter(proposal -> proposal.id().equals(proposalId))
+				.findFirst()
+				.orElseThrow();
+		assertThat(afterRestart.status()).isEqualTo(ProposalStatus.ACTIVE);
+	}
+
+	@Test
 	void activeProposalEndsAutomaticallyAfterEndTime() {
 		var community = communityService.getDefaultCommunity();
 		var createRequest = new CreateProposalRequest();
@@ -34,10 +69,19 @@ class ProposalLifecycleServiceTest {
 		createRequest.setContent("內容");
 		createRequest.setType(ProposalType.GENERAL);
 		createRequest.setVisible(true);
-		createRequest.setEndTime(Instant.now().minus(1, ChronoUnit.MINUTES));
+		createRequest.setEndTime(Instant.now().plus(1, ChronoUnit.HOURS));
 		var proposalId = proposalService.create(community.getId(), createRequest).id();
 
 		proposalService.start(community.getId(), proposalId);
+
+		var updateRequest = new UpdateProposalRequest();
+		updateRequest.setProposalNumber("自動結束案");
+		updateRequest.setTitle("測試自動結束");
+		updateRequest.setContent("內容");
+		updateRequest.setType(ProposalType.GENERAL);
+		updateRequest.setVisible(true);
+		updateRequest.setEndTime(Instant.now().minus(1, ChronoUnit.MINUTES));
+		proposalService.update(community.getId(), proposalId, updateRequest);
 
 		var listed = proposalService.listForAdmin(community.getId());
 		assertThat(listed)

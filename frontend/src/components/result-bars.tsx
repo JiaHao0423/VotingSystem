@@ -13,7 +13,7 @@ export function ResultBars({ options }: { options: VoteOptionResult[] }) {
   return (
     <div className="flex flex-col gap-4">
       {options.map((opt) => (
-        <div key={opt.choice}>
+        <div key={opt.choiceKey}>
           <div className="mb-1.5 flex items-baseline justify-between">
             <span className="text-sm font-medium text-foreground">{opt.label}</span>
             <span className="text-sm text-muted-foreground">
@@ -23,7 +23,7 @@ export function ResultBars({ options }: { options: VoteOptionResult[] }) {
           </div>
           <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
             <div
-              className={cn('h-full rounded-full transition-all', optionColor[opt.choice])}
+              className={cn('h-full rounded-full transition-all', optionColor[opt.choiceKey] ?? 'bg-primary')}
               style={{ width: `${opt.voteRatio * 100}%` }}
             />
           </div>

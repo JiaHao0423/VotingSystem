@@ -1,11 +1,18 @@
 package com.ben.com.backend.web.dto;
 
-import com.ben.com.backend.domain.enums.ProposalStatus;
 import com.ben.com.backend.domain.enums.ProposalType;
+import com.ben.com.backend.domain.enums.ThresholdBase;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
+import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class UpdateProposalRequest {
 
 	@NotBlank
@@ -26,69 +33,24 @@ public class UpdateProposalRequest {
 
 	private boolean visible;
 
-	private int sortOrder;
+	@Valid
+	private List<VoteOptionRequest> voteOptions;
 
-	public String getProposalNumber() {
-		return proposalNumber;
-	}
+	@Min(1)
+	private int passThresholdNumerator = 1;
+
+	@Min(1)
+	private int passThresholdDenominator = 2;
+
+	private ThresholdBase thresholdBase = ThresholdBase.ATTENDED;
+
+	private boolean allowRevote = true;
 
 	public void setProposalNumber(String proposalNumber) {
 		this.proposalNumber = proposalNumber != null ? proposalNumber.trim() : null;
 	}
 
-	public String getTitle() {
-		return title;
-	}
-
 	public void setTitle(String title) {
 		this.title = title != null ? title.trim() : null;
-	}
-
-	public String getContent() {
-		return content;
-	}
-
-	public void setContent(String content) {
-		this.content = content;
-	}
-
-	public ProposalType getType() {
-		return type;
-	}
-
-	public void setType(ProposalType type) {
-		this.type = type;
-	}
-
-	public Instant getStartTime() {
-		return startTime;
-	}
-
-	public void setStartTime(Instant startTime) {
-		this.startTime = startTime;
-	}
-
-	public Instant getEndTime() {
-		return endTime;
-	}
-
-	public void setEndTime(Instant endTime) {
-		this.endTime = endTime;
-	}
-
-	public boolean isVisible() {
-		return visible;
-	}
-
-	public void setVisible(boolean visible) {
-		this.visible = visible;
-	}
-
-	public int getSortOrder() {
-		return sortOrder;
-	}
-
-	public void setSortOrder(int sortOrder) {
-		this.sortOrder = sortOrder;
 	}
 }

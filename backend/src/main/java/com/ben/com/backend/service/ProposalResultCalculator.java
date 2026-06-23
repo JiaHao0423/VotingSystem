@@ -2,18 +2,19 @@ package com.ben.com.backend.service;
 
 import com.ben.com.backend.domain.entity.Community;
 import com.ben.com.backend.domain.entity.Proposal;
-import com.ben.com.backend.domain.enums.VoteChoice;
+import com.ben.com.backend.domain.enums.ThresholdBase;
+import com.ben.com.backend.domain.model.VoteOptionItem;
 import com.ben.com.backend.repository.VoteRecordRepository;
+import com.ben.com.backend.util.VoteOptionDefaults;
 import com.ben.com.backend.web.dto.ProposalResultResponse;
 import com.ben.com.backend.web.dto.VoteOptionResult;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Set;
 
 public final class ProposalResultCalculator {
-
-	private static final double PASS_RATIO = 0.5;
 
 	private ProposalResultCalculator() {
 	}
@@ -22,38 +23,72 @@ public final class ProposalResultCalculator {
 			Proposal proposal,
 			Community community,
 			BigDecimal totalCommunityArea,
+			long attendedHouseholds,
+			BigDecimal attendedWeight,
 			VoteRecordRepository voteRecordRepository
 	) {
-		return compute(proposal, community, totalCommunityArea, voteRecordRepository, null);
+		return compute(
+				proposal,
+				community,
+				totalCommunityArea,
+				attendedHouseholds,
+				attendedWeight,
+				voteRecordRepository,
+				null
+		);
 	}
 
 	public static ProposalResultResponse compute(
 			Proposal proposal,
 			Community community,
 			BigDecimal totalCommunityArea,
+			long attendedHouseholds,
+			BigDecimal attendedWeight,
 			VoteRecordRepository voteRecordRepository,
 			Instant votedAt
 	) {
+		var voteOptions = VoteOptionDefaults.normalize(proposal.getVoteOptions());
+		var aggregates = new HashMap<String, long[]>();
+		var weightByKey = new HashMap<String, BigDecimal>();
+
+		for (Object[] row : voteRecordRepository.aggregateByProposalId(proposal.getId())) {
+			var key = (String) row[0];
+			aggregates.put(key, new long[] {toLong(row[1])});
+			weightByKey.put(key, (BigDecimal) row[2]);
+		}
+
 		long totalVotes = voteRecordRepository.countByProposalId(proposal.getId());
 		BigDecimal totalVotedWeight = voteRecordRepository.sumWeightByProposalId(proposal.getId());
 
-		var options = Arrays.stream(VoteChoice.values())
-				.map(choice -> toOptionResult(proposal.getId(), choice, totalVotes, totalVotedWeight, voteRecordRepository))
+		var options = voteOptions.stream()
+				.map(option -> toOptionResult(option, aggregates, weightByKey, totalVotes, totalVotedWeight))
 				.toList();
 
-		long agreeVotes = voteRecordRepository.countByProposalIdAndChoice(proposal.getId(), VoteChoice.AGREE);
-		BigDecimal agreeWeight = voteRecordRepository.sumWeightByProposalIdAndChoice(proposal.getId(), VoteChoice.AGREE);
+		Set<String> passKeys = VoteOptionDefaults.passKeys(voteOptions);
+		long agreeVotes = 0;
+		BigDecimal agreeWeight = BigDecimal.ZERO;
+		if (!passKeys.isEmpty()) {
+			agreeVotes = voteRecordRepository.countPassVotes(proposal.getId(), passKeys);
+			agreeWeight = voteRecordRepository.sumPassVoteWeight(proposal.getId(), passKeys);
+		}
 
-		int totalCommunityHouseholds = community.getTotalHouseholds();
 		BigDecimal communityWeight = resolveCommunityWeight(community, totalCommunityArea);
+		int thresholdHouseholds = proposal.getThresholdBase() == ThresholdBase.ATTENDED
+				? (int) attendedHouseholds
+				: community.getTotalHouseholds();
+		BigDecimal thresholdWeight = proposal.getThresholdBase() == ThresholdBase.ATTENDED
+				? attendedWeight
+				: communityWeight;
 
-		double agreeHouseholdRatio = totalCommunityHouseholds > 0
-				? (double) agreeVotes / totalCommunityHouseholds
+		double agreeHouseholdRatio = thresholdHouseholds > 0
+				? (double) agreeVotes / thresholdHouseholds
 				: 0;
-		double agreeWeightRatio = communityWeight.compareTo(BigDecimal.ZERO) > 0
-				? agreeWeight.divide(communityWeight, 6, RoundingMode.HALF_UP).doubleValue()
+		double agreeWeightRatio = thresholdWeight.compareTo(BigDecimal.ZERO) > 0
+				? agreeWeight.divide(thresholdWeight, 6, RoundingMode.HALF_UP).doubleValue()
 				: 0;
-		boolean passed = agreeHouseholdRatio > PASS_RATIO && agreeWeightRatio > PASS_RATIO;
+
+		double passRatio = (double) proposal.getPassThresholdNumerator() / proposal.getPassThresholdDenominator();
+		boolean passed = agreeHouseholdRatio >= passRatio && agreeWeightRatio >= passRatio;
 
 		return new ProposalResultResponse(
 				proposal.getId(),
@@ -65,8 +100,13 @@ public final class ProposalResultCalculator {
 				options,
 				totalVotes,
 				totalVotedWeight,
-				totalCommunityHouseholds,
+				community.getTotalHouseholds(),
 				communityWeight,
+				thresholdHouseholds,
+				thresholdWeight,
+				proposal.getPassThresholdNumerator(),
+				proposal.getPassThresholdDenominator(),
+				proposal.getThresholdBase(),
 				agreeHouseholdRatio,
 				agreeWeightRatio,
 				passed,
@@ -82,27 +122,29 @@ public final class ProposalResultCalculator {
 	}
 
 	private static VoteOptionResult toOptionResult(
-			Long proposalId,
-			VoteChoice choice,
+			VoteOptionItem option,
+			HashMap<String, long[]> aggregates,
+			HashMap<String, BigDecimal> weightByKey,
 			long totalVotes,
-			BigDecimal totalWeight,
-			VoteRecordRepository voteRecordRepository
+			BigDecimal totalWeight
 	) {
-		long votes = voteRecordRepository.countByProposalIdAndChoice(proposalId, choice);
-		BigDecimal weight = voteRecordRepository.sumWeightByProposalIdAndChoice(proposalId, choice);
+		long votes = aggregates.containsKey(option.key()) ? aggregates.get(option.key())[0] : 0;
+		BigDecimal weight = weightByKey.getOrDefault(option.key(), BigDecimal.ZERO);
 		double voteRatio = totalVotes > 0 ? (double) votes / totalVotes : 0;
 		double weightRatio = totalWeight.compareTo(BigDecimal.ZERO) > 0
 				? weight.divide(totalWeight, 6, RoundingMode.HALF_UP).doubleValue()
 				: 0;
 
-		return new VoteOptionResult(choice, label(choice), votes, weight, voteRatio, weightRatio);
+		return new VoteOptionResult(option.key(), option.label(), votes, weight, voteRatio, weightRatio);
 	}
 
-	public static String label(VoteChoice choice) {
-		return switch (choice) {
-			case AGREE -> "同意";
-			case DISAGREE -> "不同意";
-			case ABSTAIN -> "棄權";
-		};
+	private static long toLong(Object value) {
+		if (value == null) {
+			return 0;
+		}
+		if (value instanceof Number number) {
+			return number.longValue();
+		}
+		return Long.parseLong(value.toString());
 	}
 }
