@@ -18,14 +18,14 @@ public class DatabaseSchemaPatcher implements ApplicationRunner {
 
 	private static final Logger log = LoggerFactory.getLogger(DatabaseSchemaPatcher.class);
 
-	@Language("MySQL")
+	@Language("SQL")
 	private static final String VERSION_QUERY = "SELECT VERSION()";
 
-	@Language("MySQL")
+	@Language("SQL")
 	private static final String ALTER_VOTE_CHOICE =
 			"ALTER TABLE vote_records MODIFY COLUMN choice VARCHAR(50) NOT NULL";
 
-	@Language("MySQL")
+	@Language("SQL")
 	private static final String FIND_ORPHAN_CHOICE_KEY_COLUMN = """
 			SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
 			WHERE TABLE_SCHEMA = DATABASE()
@@ -33,14 +33,14 @@ public class DatabaseSchemaPatcher implements ApplicationRunner {
 			AND COLUMN_NAME = 'choice_key'
 			""";
 
-	@Language("MySQL")
+	@Language("SQL")
 	private static final String DROP_ORPHAN_CHOICE_KEY_COLUMN = "ALTER TABLE vote_records DROP COLUMN choice_key";
 
-	@Language("MySQL")
-	private static final String FIND_TABLE_COLUMN = """
+	@Language("SQL")
+	private static final String FIND_PROPOSAL_COLUMN = """
 			SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
 			WHERE TABLE_SCHEMA = DATABASE()
-			AND TABLE_NAME = ?
+			AND TABLE_NAME = 'proposals'
 			AND COLUMN_NAME = ?
 			""";
 
@@ -93,24 +93,23 @@ public class DatabaseSchemaPatcher implements ApplicationRunner {
 	}
 
 	private void ensureProposalColumns() {
-		addColumnIfMissing("proposals", "vote_options", "TEXT NOT NULL");
-		addColumnIfMissing("proposals", "pass_threshold_numerator", "INT NOT NULL DEFAULT 1");
-		addColumnIfMissing("proposals", "pass_threshold_denominator", "INT NOT NULL DEFAULT 2");
-		addColumnIfMissing("proposals", "threshold_base", "VARCHAR(20) NOT NULL DEFAULT 'ATTENDED'");
-		addColumnIfMissing("proposals", "allow_revote", "BOOLEAN NOT NULL DEFAULT TRUE");
+		addProposalColumnIfMissing("vote_options", "TEXT NOT NULL");
+		addProposalColumnIfMissing("pass_threshold_numerator", "INT NOT NULL DEFAULT 1");
+		addProposalColumnIfMissing("pass_threshold_denominator", "INT NOT NULL DEFAULT 2");
+		addProposalColumnIfMissing("threshold_base", "VARCHAR(20) NOT NULL DEFAULT 'ATTENDED'");
+		addProposalColumnIfMissing("allow_revote", "BOOLEAN NOT NULL DEFAULT TRUE");
 	}
 
-	private void addColumnIfMissing(String table, String column, String definition) {
+	private void addProposalColumnIfMissing(String column, String definition) {
 		try {
-			var existing = jdbcTemplate.queryForList(FIND_TABLE_COLUMN, table, column);
+			var existing = jdbcTemplate.queryForList(FIND_PROPOSAL_COLUMN, column);
 			if (!existing.isEmpty()) {
 				return;
 			}
-			// table/column/definition are compile-time constants from ensureProposalColumns()
-			jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
-			log.info("Added {}.{} column", table, column);
+			jdbcTemplate.execute("ALTER TABLE proposals ADD COLUMN " + column + " " + definition);
+			log.info("Added proposals.{} column", column);
 		} catch (Exception ex) {
-			log.debug("{}.{} patch skipped: {}", table, column, ex.getMessage());
+			log.debug("proposals.{} patch skipped: {}", column, ex.getMessage());
 		}
 	}
 }
